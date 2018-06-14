@@ -1,2 +1,3 @@
-# metzz
-framework z
+# metz
+
+Quick dev framework
