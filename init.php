@@ -1,10 +1,9 @@
 <?php
 if (!defined('METZ_INIT')) {
-    // 防止重复初始化    
     define("METZ_INIT", 1);
-    // 版本检查
+    // php version checking
     if (PHP_VERSION_ID < 50400) {
-        exit("Need PHP-5.4.0 or upper.".PHP_EOL);
+        exit('Need PHP-5.4.0 or upper.' . PHP_EOL);
     }
     define('METZ_PATH_INIT_FILE', __FILE__);
     define('METZ_PATH_HOME', dirname(METZ_PATH_INIT_FILE));

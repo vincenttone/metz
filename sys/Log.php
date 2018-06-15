@@ -12,7 +12,7 @@ namespace Metz\sys;
  *      $LOG_LEVEL_KEYWORD("ERROR | WARN | NOTICE | INFO | DEBUG")
  **/
 class Log {
-    private static $_instance = null;
+    protected static $_instance = null;
 
     const LOOP_STEP = 5;
 
@@ -66,7 +66,7 @@ class Log {
         'log_level'		=> self::LEVEL_NOTICE,
     );
 
-    private function __construct()
+    protected function __construct()
     {
     }
     /**
@@ -98,7 +98,7 @@ class Log {
      * 禁用对象克隆
      * @throws Exception
      */
-    private function __clone()
+    protected function __clone()
     {
         throw new Exception("Could not clone the object from class: ".__CLASS__);
     }
@@ -135,7 +135,7 @@ class Log {
     /**
      * @return bool|string
      */
-    private function _log_prefix()
+    protected function _log_prefix()
     {
         $prefix = date($this->_config['date_format']);
         $trace = debug_backtrace();
@@ -159,7 +159,7 @@ class Log {
     /**
      * @return array
      */
-    private function _get_levels()
+    protected function _get_levels()
     {
         return $this->_levels;
     }
@@ -227,7 +227,7 @@ class Log {
      * @param $level
      * @return bool
      */
-    private function _level_check($level)
+    protected function _level_check($level)
     {
         $log_level = $this->get_level();
         if ($level > $log_level) {
@@ -243,7 +243,7 @@ class Log {
      * @param int $level
      * @return bool
      */
-    private function _write($message, $level = self::LEVEL_ERROR, $des = null) {
+    protected function _write($message, $level = self::LEVEL_ERROR, $des = null) {
         $level_word = null;
         if (isset($this->_level_words[$level])) {
             $level_word = $this->_level_words[$level];
@@ -275,7 +275,7 @@ class Log {
      * @param $message
      * @return bool
      */
-    private function _write_to_sys_log($message)
+    protected function _write_to_sys_log($message)
     {
         if (is_resource(STDERR)) {
             fprintf(
