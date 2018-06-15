@@ -1,0 +1,10 @@
+{
+	"autoload": {
+		"psr-4": {
+			"Metz\\sys\\": "sys/",
+			"Metz\\lib\\": "lib/",
+			"Metz\\app\\": "app/"
+		},
+		"classmap": ["utils"]
+	}
+}

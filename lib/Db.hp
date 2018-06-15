@@ -1,0 +1,490 @@
+<?php
+class Metz/Lib
+class Db
+{
+    const DB_DRIVER_MYSQL = 'mysql';
+    const DB_DRIVER_MONGO = 'mongo';
+
+    const CONFIG_FIELD_DRIVER = 'driver';
+    const CONFIG_FIELD_HOST = 'host';
+    const CONFIG_FIELD_PORT = 'port';
+    const CONFIG_FIELD_USERNAME = 'username';
+    const CONFIG_FIELD_PASSWORD = 'password';
+    const CONFIG_FIELD_PCONNECT = 'pconnect';
+    const CONFIG_FIELD_DB = 'db';
+
+    protected $_driver = 'mysql';
+    protected $_host = 'localhost';
+    protected $_port = '3360';
+    protected $_username = '';
+    protected $_password = '';
+    protected $_pconnect = false;
+    protected $_config;
+    protected $_db = null;
+
+    /**
+     * @param array $config
+     * @return Lib_Db
+     */
+    public static function db($config)
+    {
+        $db = new self($config);
+        return $db;
+    }
+
+    /**
+     * @param array $config
+     */
+    public function __construct(array $config)
+    {
+        $this->make_config($config);
+        $this->_init_db();
+    }
+
+    public function __destruct()
+    {
+        unset($this->_db);
+    }
+
+    /**
+     * @param array $config
+     * @return array $this
+     */
+    public function make_config($config)
+    {
+        $this->_host = $config[self::CONFIG_FIELD_HOST];
+        $this->_port = $config[self::CONFIG_FIELD_PORT];
+        $this->_username = isset($config[self::CONFIG_FIELD_USERNAME])
+            ? $config[self::CONFIG_FIELD_USERNAME] : '';
+        $this->_password = isset($config[self::CONFIG_FIELD_PASSWORD])
+            ? $config[self::CONFIG_FIELD_PASSWORD] : '';
+        $this->_pconnect = false;
+        if (isset($config[self::CONFIG_FIELD_PCONNECT])) {
+            if ($config[self::CONFIG_FIELD_PCONNECT]) {
+                $this->_pconnect =  true;
+                unset($config[self::CONFIG_FIELD_PCONNECT]);
+            }
+        }
+        $this->_driver = $config[self::CONFIG_FIELD_DRIVER];
+        unset($config[self::CONFIG_FIELD_DRIVER]);
+        $this->_config = $config;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function get_config()
+    {
+        return $this->_config;
+    }
+
+    private function _init_db()
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                $db_conf = [];
+                $config = $this->get_config();
+                $db_conf[Lib_Mongo_Db::CONFIG_FIELD_HOST] = $config[self::CONFIG_FIELD_HOST];
+                unset($config[self::CONFIG_FIELD_HOST]);
+                $db_conf[Lib_Mongo_Db::CONFIG_FIELD_PORT] = $config[self::CONFIG_FIELD_PORT];
+                unset($config[self::CONFIG_FIELD_PORT]);
+                if (isset($config[self::CONFIG_FIELD_USERNAME])) {
+                    $db_conf[Lib_Mongo_Db::CONFIG_FIELD_USERNAME] = $config[self::CONFIG_FIELD_USERNAME];
+                    unset($config[self::CONFIG_FIELD_USERNAME]);
+                }
+                if (isset($config[self::CONFIG_FIELD_PASSWORD])) {
+                    $db_conf[Lib_Mongo_Db::CONFIG_FIELD_PASSWORD] = $config[self::CONFIG_FIELD_PASSWORD];
+                    unset($config[self::CONFIG_FIELD_PASSWORD]);
+                }
+                if (isset($config[self::CONFIG_FIELD_DB])) {
+                    $db_conf[Lib_Mongo_Db::CONFIG_FIELD_DB] = $config[self::CONFIG_FIELD_DB];
+                    unset($config[self::CONFIG_FIELD_DB]);
+                }
+                $db_conf = array_merge($db_conf, $config);
+                $this->_db = Lib_Mongo_Factory::getMongo($db_conf, $this->_pconnect);
+                break;
+        }
+    }
+
+    /**
+     * @param string $db_name
+     * @return $this
+     */
+    public function set_db_name($db_name)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                $this->_db->SetDbName($db_name);
+                break;
+        }
+        return $this;
+    }
+
+    /**
+     * @param string $table_name
+     * @return $this
+     */
+    public function set_table_name($table_name)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, table: %s', [$table_name]);
+                $this->_db->SetTableName($table_name);
+                break;
+        }
+        return $this;
+    }
+
+    /**
+     * @param string $fields
+     * @return $this
+     */
+    public function setCompressFields($fields)
+    {
+        $this->_db->setCompressFields($fields);
+        return $this;
+    }
+
+    /**
+     * @param array $cond
+     * @param array $fields
+     * @return array
+     */
+    public function get_one($cond, $fields = [])
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, cond: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->QueryOne($cond, $fields);
+                    if (is_null($result)) {
+                        $result = Lib_Helper::get_err_struct(
+                            Const_Err_Db::ERR_MONGO_FINDONE_EMPTY,
+                            '没有获取到数据',
+                            __FILE__,
+                            __LINE__
+                        );
+                    } else {
+                        $result = Lib_Helper::get_return_struct($result);
+                    }
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." get faild! cond: %s, fields: %s code: %d, messsage: %s" ,
+                        [json_encode($cond), json_encode($fields), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_FINDONE_FAIL,
+                        '获取数据库数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $cond
+     * @param array $fields
+     * @param int $limit
+     * @param int $offset
+     * @param null $sort
+     * @param bool $return_iterator
+     * @return array
+     */
+    public function get_all($cond = [], $fields = [], $limit = 0, $offset = 0, $sort = null, $return_iterator = false)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, cond: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->Query($cond, $fields, $limit, $offset, $sort, $return_iterator);
+                    if (is_null($result)) {
+                        $result = Lib_Helper::get_err_struct(
+                            Const_Err_Db::ERR_MONGO_FIND_FAIL,
+                            '没有获取到数据',
+                            __FILE__,
+                            __LINE__
+                        );
+                    } else {
+                        $result = Lib_Helper::get_return_struct($result);
+                    }
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." get faild! cond: %s, fields: %s code: %d, messsage: %s",
+                        [json_encode($cond), json_encode($fields), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_FIND_FAIL,
+                        '获取数据库数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $field
+     * @param array $cond
+     * @return array
+     */
+    public function distinct($field, $cond = [])
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, cond: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->Distinct($field, $cond);
+                    if (is_null($result)) {
+                        $result = Lib_Helper::get_err_struct(
+                            Const_Err_Db::ERR_MONGO_FIND_FAIL,
+                            '没有获取到数据',
+                            __FILE__,
+                            __LINE__
+                        );
+                    } else {
+                        $result = Lib_Helper::get_return_struct($result);
+                    }
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." get faild! cond: %s, fields: %s code: %d, messsage: %s",
+                        [json_encode($cond), json_encode($fields), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_FIND_FAIL,
+                        '获取数据库数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $data
+     * @param bool $batch
+     * @return array
+     */
+    public function insert($data, $batch = false)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, data: %s', [json_encode($data)]);
+                try {
+                    $result =  $this->_db->Insert($data, $batch);
+                    $result = Lib_Helper::get_return_struct($result);
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." insert data faild! data: %s, batch: %s code: %d, messsage: %s",
+                        [json_encode($data), var_export($batch, true), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_INSERT_FAIL,
+                        '数据库添加数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $cond
+     * @return null
+     */
+    public function delete($cond)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, data: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->Delete($cond);
+                    $result = Lib_Helper::get_return_struct($result);
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." delete data faild! cond: %s, code: %d, messsage: %s",
+                        [json_encode($cond), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_DELETE_FAIL,
+                        '数据库删除数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return null;
+    }
+
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function save($data)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, data: %s', [json_encode($data)]);
+                try {
+                    $result =  $this->_db->Save($data);
+                    $result = Lib_Helper::get_return_struct($result);
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." save data faild! data: %s, code: %d, messsage: %s",
+                        [json_encode($data), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_SAVE_FAIL,
+                        '数据库保存数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $cond
+     * @param array $data
+     * @param bool $multi
+     * @param bool $upsert
+     * @return array
+     */
+    public function update($cond, $data, $multi = false, $upsert = false)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(
+                    __METHOD__.': Use mongo driver, data: %s, cond: %s',
+                    [json_encode($data), json_encode($cond)]
+                );
+                try {
+                    $result =  $this->_db->Update($cond, $data, $multi, $upsert);
+                    $result = Lib_Helper::get_return_struct($result);
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." save data faild! data: %s, code: %d, messsage: %s",
+                        [json_encode($data), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_UPDATE_FAIL,
+                        '数据库更新数据失败!',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $cond
+     * @param int $limit
+     * @param int $offset
+     * @return array
+     */
+    public function count($cond = [], $limit = 0, $offset = 0)
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, cond: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->Count($cond, $limit, $offset);
+                    if (is_null($result)) {
+                        $result = Lib_Helper::get_err_struct(
+                            Const_Err_Db::ERR_MONGO_COUNT_FAIL,
+                            '获取数目失败',
+                            __FILE__,
+                            __LINE__
+                        );
+                    } else {
+                        $result = Lib_Helper::get_return_struct($result);
+                    }
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." get faild! cond: %s, code: %d, messsage: %s",
+                        [json_encode($cond), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_COUNT_FAIL,
+                        '获取数目失败',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param array $cond
+     * @return array
+     */
+    public function get_tables($cond = [])
+    {
+        switch ($this->_driver) {
+            case self::DB_DRIVER_MONGO:
+            default:
+                Lib_Log::debug(__METHOD__.': Use mongo driver, cond: %s', [json_encode($cond)]);
+                try {
+                    $result = $this->_db->GetTables($cond);
+                    if (is_null($result)) {
+                        $result = Lib_Helper::get_err_struct(
+                            Const_Err_Db::ERR_MONGO_COLLECTIONS_FAIL,
+                            '获取数据集失败',
+                            __FILE__,
+                            __LINE__
+                        );
+                    } else {
+                        $result = Lib_Helper::get_return_struct($result);
+                    }
+                } catch (Exception $ex) {
+                    Lib_Log::error(
+                        __METHOD__." get faild! cond: %s, code: %d, messsage: %s",
+                        [json_encode($cond), $ex->getCode(), $ex->getMessage()]
+                    );
+                    $result = Lib_Helper::get_err_struct(
+                        Const_Err_Db::ERR_MONGO_COLLECTIONS_FAIL,
+                        '获取数据集失败',
+                        __FILE__,
+                        __LINE__
+                    );
+                }
+        }
+        return $result;
+    }
+
+    /**
+     * @param string $src_type
+     * @param string $sub_src
+     * @return string
+     */
+    public static function get_src_data_table_name($src_type, $sub_src)
+    {
+        if (('navinfo'==$src_type) || ('gaode'==$src_type)
+            || ('groupon'==$src_type) || ('internet'==$src_type)) {
+            return "t_src_$src_type";
+        }
+        if ('dianping' == $sub_src || 'dianping_hezuo' == $sub_src) {
+            return 't_src_dianping';
+        }
+        return 't_src_other';
+    }
+}
