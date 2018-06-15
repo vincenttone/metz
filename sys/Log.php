@@ -1,5 +1,5 @@
 <?php
-namespace Metz\Sys;
+namespace Metz\sys;
 /**
  * @file log.php
  * @author vincent
@@ -119,6 +119,7 @@ class Log {
             $level = $level_array[$level_word];
         }
         if ($this->_level_check($level) === false) {
+            
             return true;
         }
         $msg = '';
@@ -266,7 +267,7 @@ class Log {
         $filepath = (!isset($this->_config['file_prefix']) || empty($this->_config['file_prefix']))
             ? $des : $des. $this->_config['file_prefix'] . '.';
         $filepath .= $file_infix . '.' . date('YmdH') . '.log';
-        $content  = sprintf("%s:\t%s\t%s\n", $level_word, $this->_log_prefix(), trim($message));
+        $content  = sprintf("%s\t%s\t%s\n", $level_word, $this->_log_prefix(), trim($message));
         return @error_log($content, 3, $filepath);
     }
 

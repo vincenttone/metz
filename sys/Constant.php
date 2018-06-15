@@ -1,12 +1,12 @@
 <?php
-namespace Metz\Sys;
+namespace Metz\sys;
 
 class Constant
 {
     const VERSION_MAJOR = 1;
-    const VERION_MINOR  = 0;
+    const VERSION_MINOR = 0;
     const VERSION_TINY  = 0;
-    const VERSION_NAME  = 'double blade';
+    const VERSION_CODE  = 'double blade';
 
     const RUN_MODE_PRO = 1;  // production
     const RUN_MODE_DEV = 2;  // development
@@ -15,13 +15,13 @@ class Constant
 
     static function version()
     {
-        return array(self::VERSION_MAJOR, self::VERSION_MINOR, self::VERSION_TINY, self::VERION_NAME);
+        return array(self::VERSION_MAJOR, self::VERSION_MINOR, self::VERSION_TINY, self::VERSION_CODE);
     }
     
     static function version_str()
     {
         $version = self::version();
-        $name = array_pop($version);
-        return implode('.', $version) . ' ['. $name . ']';
+        $code = array_pop($version);
+        return implode('.', $version) . ' ['. $code . ']';
     }
 }

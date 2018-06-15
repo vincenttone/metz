@@ -1,5 +1,5 @@
 <?php
-namespace Metz\Sys;
+namespace Metz\sys;
 
 class Router
 {

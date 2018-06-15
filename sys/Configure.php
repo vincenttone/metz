@@ -4,7 +4,7 @@
  * @brief	配置管理
  * @version	1.0
  */
-namespace Metz\Sys;
+namespace Metz\sys;
 
 class Configure
 {
@@ -170,7 +170,7 @@ class Configure
         } else {
             return false;
         }
-        $run_mode = Sys_App::app()->get_run_mode();
+        $run_mode = App::application()->get_run_mode();
         $run_mode == Constant::RUN_MODE_PRO && $this->check_run_mode_suffix(false);
         $run_mode_abbr = self::run_mode_abbr($run_mode);
         $run_mode_conf_file = empty($run_mode_abbr) ? $file : $file.'.'.$run_mode_abbr;

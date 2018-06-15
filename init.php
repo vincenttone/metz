@@ -11,6 +11,6 @@ if (!defined('METZ_INIT')) {
     // composer autoloader
     require_once(METZ_PATH_HOME . '/vendor/autoload.php');
     // start app
-    Metz\Sys\App::bootstrap(DA_PATH_HOME.'/conf/app.ini');
-    Metz\Sys\Log::debug('Metz (' . Metz\Constant::version_str() . ') init ok');
+    Metz\sys\App::application()->bootstrap(METZ_PATH_HOME.'/conf/app.ini');
+    Metz\sys\Log::debug('Metz (' . Metz\sys\Constant::version_str() . ') init @ ' . METZ_PATH_HOME);
 }
