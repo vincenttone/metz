@@ -14,8 +14,6 @@ namespace Metz\sys;
 class Log {
     protected static $_instance = null;
 
-    const LOOP_STEP = 5;
-
     const LEVEL_ERROR = 1;
     const LEVEL_WARN  = 2;
     const LEVEL_NOTICE = 4;
@@ -142,12 +140,9 @@ class Log {
         $file = '';
         $line = '';
         if (is_array($trace) && count($trace) > 0) {
-            if (isset($trace[self::LOOP_STEP])) {
-                isset($trace[self::LOOP_STEP]['file'])
-                    && $file = $trace[self::LOOP_STEP]['file'];
-                isset($trace[self::LOOP_STEP]['line'])
-                    && $line = $trace[self::LOOP_STEP]['line'];
-            }
+            $t = array_pop($trace);
+            isset($t['file']) && $file = $t['file'];
+            isset($t['line']) && $line = $t['line'];
         }
         $prefix .= sprintf(
             "\tFile: [%s]\tLine: [%s]\tPid: [%d]\t",
