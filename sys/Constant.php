@@ -1,6 +1,11 @@
 <?php
 namespace Metz\sys;
 
+define('METZ_RUN_MODE_PRO', 1);
+define('METZ_RUN_MODE_DEV', 2);
+define('METZ_RUN_MODE_UT', 3);
+define('METZ_RUN_MODE_PRE', 4);
+
 class Constant
 {
     const VERSION_MAJOR = 1;
@@ -8,10 +13,10 @@ class Constant
     const VERSION_TINY  = 0;
     const VERSION_CODE  = 'double blade';
 
-    const RUN_MODE_PRO = 1;  // production
-    const RUN_MODE_DEV = 2;  // development
-    const RUN_MODE_UT  = 3;  // unit test
-    const RUN_MODE_PRE = 4;  // pre-production
+    const RUN_MODE_PRO = METZ_RUN_MODE_PRO;  // production
+    const RUN_MODE_DEV = METZ_RUN_MODE_DEV;  // development
+    const RUN_MODE_UT  = METZ_RUN_MODE_UT;  // unit test
+    const RUN_MODE_PRE = METZ_RUN_MODE_PRE;  // pre-production
 
     static function version()
     {
