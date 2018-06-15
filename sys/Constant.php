@@ -13,14 +13,14 @@ class Constant
     const RUN_MODE_UT  = 3;  // unit test
     const RUN_MODE_PRE = 4;  // pre-production
 
-    static function version_array()
+    static function version()
     {
         return array(self::VERSION_MAJOR, self::VERSION_MINOR, self::VERSION_TINY, self::VERION_NAME);
     }
     
-    static function version()
+    static function version_str()
     {
-        $version = self::version_array();
+        $version = self::version();
         $name = array_pop($version);
         return implode('.', $version) . ' ['. $name . ']';
     }
