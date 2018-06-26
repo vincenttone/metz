@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\constants;
+namespace Metz\app\metz\configure;
 use Metz\app\metz\db\drivers;
 
 class Driver
