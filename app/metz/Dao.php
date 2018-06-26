@@ -2,7 +2,7 @@
 namespace Metz\app\metz;
 use Metz\sys\Log;
 use Metz\app\metz\exceptions;
-use Metz\app\metz\constants\Driver;
+use Metz\app\metz\configure\Driver;
 
 abstract class Dao
 {
