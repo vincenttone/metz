@@ -1,5 +1,6 @@
 <?php
-namespace Metz/Lib
+namespace Metz\Lib;
+
 class Curl {
     const PROTOCOL_HTTP = 1;
     const PROTOCOL_FTP = 2;

@@ -1,32 +1,50 @@
 <?php
 namespace Metz\app\metz;
 use Metz\sys\Log;
+use Metz\app\metz\exceptions;
 
 abstract class Dao
 {
     const DATA_VAL = 1;
     const DATA_STATUS = 2;
 
-    const DATA_STATUS_LOAD = 1;
-    const DATA_STATUS_SAVED = 2;
-    const DATA_STATUS_MODIFIED = 3;
+    const DATA_STATUS_EMPTY = 1;
+    const DATA_STATUS_ASSIGNED = 2;
+    const DATA_STATUS_LOADED = 3;
+    const DATA_STATUS_SAVED = 4;
+    const DATA_STATUS_MODIFIED = 5;
+    const DATA_STATUS_DELETED = 6;
+
+    const STATUS_INIT = 1;
+    const STATUS_CHANGED = 2;
+    const STATUS_SAME = 3;
+    const STATUS_NOT_EXISTS = 4;
 
     protected $_conn = null;
+    protected $_primary_val = null;
+    protected $_partition_val = null;
     protected $_data = [];
+    protected $_status = self::DATA_STATUS_INIT;
 
-    public abstract function get_db_name($fields = null);
-    public abstract function get_table_name($fields = null);
+    public abstract function get_db_name($primary_val = null);
+    public abstract function get_table_name($primary_val = null);
     public abstract function get_fields();
     public abstract function get_primary_key();
     public abstract function get_keys();
     public abstract function get_table_relations();
 
-    public function load($primary_val)
+    public function load()
     {
-        $conn = $this->get_connection();
         $primary_key = $this->get_primary_key();
-        $fields = $this->get_fields();
-        $data = $this->_from_table()->get_one([$primary_key => $primary_val], $fields);
+        $data = $this->_get_connection()
+              ->set_table($this->_get_table_name())
+              ->where([$primary_key => $this->_primary_val])
+              ->select($this->get_fields())
+              ->get();
+        if (empty($data)) {
+            $this->_status = self::STATUS_NOT_EXISTS;
+            return $this;
+        }
         foreach ($fields as $_f => $_conf) {
             if ($_f == $primary_key) {
                 continue;
@@ -34,10 +52,10 @@ abstract class Dao
             if (array_key_exists($_f, $data)) {
                 $this->_data[$_f] = [
                     self::DATA_VAL => $data[$_f],
-                    self::DATA_STATUS => self::DATA_STATUS_LOAD,
+                    self::DATA_STATUS => self::DATA_STATUS_LOADED,
                 ];
             } else {
-                throw new UnexpectedValueException(
+                throw new exceptions\UnexpectedValue(
                     [
                         'err' => 'Unpected result when load data',
                         'conn' => json_encode($this->_conn),
@@ -47,63 +65,174 @@ abstract class Dao
                 );
             }
         }
-    }
-
-    public function update()
-    {
-        $data = $this->filter_update_data();
-        return $this->_conn
-            ->update($data)
-            ->where($this->$primary_key);
+        $this->_status = self::STATUS_SAME;
+        return $this;
     }
 
     public function save()
     {
+        if ($this->_primary_val) {
+            $this->_update();
+        } elseif ($this->_enable_upsert()) {
+            $this->_upsert();
+        } else {
+            $this->_insert();
+        }
+        $this->_update_data_status(self::DATA_STATUS_SAVED);
+        return $this;
     }
 
     public function del()
     {
+        $del = $this->_get_connection()
+            ->set_table($this->_get_table_name())
+            ->where([$primary_key => $this->_primary_val])
+            ->delete();
+        $this->_update_data_status(self::DATA_STATUS_DELETED);
+        $this->_data = [];
+        $this->_status = self::STATUS_NOT_EXISTS;
+        return $del;
     }
 
-    protected function _fake_del()
+    protected function _insert()
+    {
+        $data = $this->_filter_data();
+        $this->_get_connection()
+            ->set_table($this->_get_table_name())
+            ->insert($data);
+        $this->_status = self::STATUS_SAME;
+        return $this;
+    }
+
+    protected function _upsert()
+    {
+        $data = $this->_filter_data();
+        $this->_get_connection()
+            ->set_table($this->_get_table_name())
+            ->upsert($data);
+        $this->_status = self::STATUS_SAME;
+        return $this;
+    }
+
+    protected function _update()
+    {
+        $data = $this->_filter_data([self::DATA_STATUS_MODIFIED, self::DATA_STATUS_ASSIGNED]);
+        if (empty($data)) {
+            return 0;
+        }
+        $this->_get_connection()
+            ->set_table($this->_get_table_name())
+            ->update($data)
+            ->where([$this->$primary_key => $this->_primary_val])
+            ->commit();
+        $this->_status = self::STATUS_SAME;
+        return $this;
+    }
+
+    protected function _update_data_status($status)
+    {
+        foreach ($this->_data as $_f => $_d) {
+            isset($_d[self::DATA_STATUS])
+                && $$this->_data[self::DATA_STATUS] == $status;
+        }
+        return $this;
+    }
+
+    protected function _filter_data($status_array = [])
+    {
+        $data = [];
+        $fields = $this->get_fields();
+        foreach ($fields as $_f => $_conf) {
+            if ($_f == $this->get_primary_key()) {
+                continue;
+            }
+            if (!empty($status_array)
+                && (!isset($this->_data[_f][self::DATA_STATUS])
+                    || !in_array($this->_data[_f][self::DATA_STATUS], $status_array)
+                )
+            ) {
+                    continue;
+            }
+            if (isset($this->_data[_f][self::DATA_VAL])) {
+                $data[$_f] = $this->_data[_f][self::DATA_VAL];
+            }
+        }
+        return $data;
+    }
+
+    protected function _enable_upsert()
     {
         return false;
     }
-
-    protected function _from_table($fields)
+    /**
+     * @desc fake del supporting
+     * @return array [status => val]
+     */
+    /*
+    protected function _fake_del_info()
     {
-        $table_name = $this->get_table_name($fields);
+        return [];
+    }
+    */
+    protected function _get_table_name()
+    {
+        $table_name = $this->get_table_name($this->_partition_val);
         if (!is_string($table_name) || !$table_name) {
-            throw new PrepareException(
+            throw new exceptions\UnexpectedInput(
                 'unexpect table name: ' . var_export($table_name, true)
-                . ', fields: ' . json_encode($fields)
             );
         }
-        return $conn->from($conn->table);
+        return $table_name;
     }
 
-    protected function _get_connection($fields = null)
+    protected function _get_connection()
     {
-        $db_name = $this->get_db_name($fields);
-        try {
-            if ($this->_conn) {
+        $db_name = $this->get_db_name($this->_partition_val);
+        if ($this->_conn) {
+            try {
                 $this->_conn->select_db($db_name);
+            } catch (exceptions\Db $ex) {
+                Log::warning($ex);
+                $this->conn = Dba::get_connection($db_name);
             }
-        } catch (ConnectException $ex) {
-            Log::warning($ex);
+        } else {
+            $this->conn = Dba::get_connection($db_name);
         }
-        $this->conn = Dba::get_connection($db_name);
         return $this->conn;
+    }
+
+    public function __call($name, $args)
+    {
+        $primary_key = $this->get_primary_key();
+        $fname_set_primary_val = 'set_' . $primary_key;
+        if (strcmp($name,$fname_set_primary_val) == 0
+            && isset($args[0])
+        ) {
+            $this->_primary_val = $args[0];
+            return $this;
+        }
+        throw new \BadMethodCallException('no such method ' . get_class() . '::' . $name);
     }
 
     public function __set($field, $val)
     {
         $fields = $this->get_fields();
         if (isset($fields[$field])) {
-            $this->_data[$field] = [
-                self::DATA_VAL => $data[$_f],
-                self::DATA_STATUS => self::DATA_STATUS_MODIFIED,
-            ];
+            if (isset($this->_data[$field])
+                && isset($this->_data[$field][self::DATA_STATUS])
+                && $this->_data[$field][self::DATA_STATUS] != self::DATA_STATUS_ASSIGNED
+            ) {
+                $this->_data[$field] = [
+                    self::DATA_VAL => $data[$_f],
+                    self::DATA_STATUS => self::DATA_STATUS_MODIFIED,
+                ];
+            } else {
+                $this->_data[$field] = [
+                    self::DATA_VAL => $data[$_f],
+                    self::DATA_STATUS => self::DATA_STATUS_ASSIGNED,
+                ];
+            }
+            $this->_status == self::STATUS_CHANGED;
         } else {
             throw new \UnexpectedValueException('no such property: ' . $field);
         }
@@ -111,6 +240,12 @@ abstract class Dao
 
     public function __get($field)
     {
+        if ($this->_status == self::STATUS_NOT_EXISTS) {
+            return null;
+        }
+        if (empty($this->_data) && $this->_primary_val) {
+            $this->load();
+        }
         if (isset($this->_data[$field][self::DATA_VAL])) {
             return $this->_data[$field][self::DATA_VAL];
         }

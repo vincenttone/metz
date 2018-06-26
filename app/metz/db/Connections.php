@@ -1,7 +1,5 @@
 <?php
-namespace Metz\app\metz;
-
-use Metz\app\metz\db\Connection;
+namespace Metz\app\metz\db;
 
 class Connections
 {

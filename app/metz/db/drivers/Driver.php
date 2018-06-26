@@ -7,7 +7,7 @@ interface Driver
     public function disconnect();
     public function check_connection();
     public function select_db($db_name);
-    public function select_table($table_name);
+    public function set_table($table_name);
 
     public function select($fields = null);
     public function insert($data);
@@ -22,6 +22,8 @@ interface Driver
     public function limit($count);
     public function offset($offset);
 
+    public function get();
+    public function get_all();
     public function commit();
 
     // advanced function
