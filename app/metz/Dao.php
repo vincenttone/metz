@@ -2,6 +2,7 @@
 namespace Metz\app\metz;
 use Metz\sys\Log;
 use Metz\app\metz\exceptions;
+use Metz\app\metz\constants\Driver;
 
 abstract class Dao
 {
@@ -22,12 +23,11 @@ abstract class Dao
 
     protected $_conn = null;
     protected $_primary_val = null;
-    protected $_partition_val = null;
     protected $_data = [];
     protected $_status = self::DATA_STATUS_INIT;
 
-    public abstract function get_db_name($primary_val = null);
-    public abstract function get_table_name($primary_val = null);
+    public abstract function get_db_config();
+    public abstract function get_table_name();
     public abstract function get_fields();
     public abstract function get_primary_key();
     public abstract function get_keys();
@@ -176,7 +176,7 @@ abstract class Dao
     */
     protected function _get_table_name()
     {
-        $table_name = $this->get_table_name($this->_partition_val);
+        $table_name = $this->get_table_name();
         if (!is_string($table_name) || !$table_name) {
             throw new exceptions\UnexpectedInput(
                 'unexpect table name: ' . var_export($table_name, true)
@@ -187,16 +187,23 @@ abstract class Dao
 
     protected function _get_connection()
     {
-        $db_name = $this->get_db_name($this->_partition_val);
+        $conf = $this->get_db_config();
+        if (!isset($conf['ip'])
+            || !isset($conf['port'])
+        ) {
+        }
+        $driver = isset($conf['driver']) ? $conf['driver'] : Driver::MYSQL;
+        $ext = isset($conf['ext']) ? $conf['ext'] : [];
         if ($this->_conn) {
             try {
                 $this->_conn->select_db($db_name);
             } catch (exceptions\Db $ex) {
                 Log::warning($ex);
-                $this->conn = Dba::get_connection($db_name);
+                $this->_conn = null;
             }
-        } else {
-            $this->conn = Dba::get_connection($db_name);
+        }
+        if ($this->_conn) {
+            $this->conn = Dba::connection($driver, $conf['ip'], $conf['port'], $ext);
         }
         return $this->conn;
     }
