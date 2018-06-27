@@ -146,7 +146,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             ->set_table($this->_get_table_name())
             ->insert($data);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
-        if ($this->_primary_val === null) {
+        if (!isset($data[$this->get_primary_key()])
+            && $this->_primary_val === null
+        ) {
             $this->_set_primary_val(
                 $this->_get_connection()
                 ->last_insert_id()
@@ -158,7 +160,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     protected function _set_primary_val($val)
     {
         $this->_primary_val = $val;
-        // $this->_data[$this->get_primary_key()] = $val;
+        $this->_data[$this->get_primary_key()] = $val;
         return $this;
     }
 
@@ -201,9 +203,6 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         $data = [];
         $fields = $this->_get_fields_info();
         foreach ($fields as $_f => $_conf) {
-            if ($_f == $this->get_primary_key()) {
-                continue;
-            }
             if (!empty($status_array)
                 && (!isset($this->_data[_f][self::DATA_STATUS])
                     || !in_array($this->_data[_f][self::DATA_STATUS], $status_array)
