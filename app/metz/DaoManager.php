@@ -142,6 +142,12 @@ class DaoManager
         return $this;
     }
 
+    public function get_dao_indexes($dao_cls)
+    {
+        $ins = $this->_get_dao_instance($dao_cls);
+        return $ins->get_indexes();
+    }
+
     protected function _get_dao_instance($dao_cls)
     {
         isset($this->_sample[$dao_cls])

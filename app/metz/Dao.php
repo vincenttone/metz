@@ -6,9 +6,10 @@ use Metz\app\metz\configure\Driver;
 
 abstract class Dao implements \JsonSerializable, \ArrayAccess
 {
+    public abstract function get_indexes();
+    
     protected abstract function _get_db_config();
     protected abstract function _get_table_name();
-    protected abstract function _get_indexes();
     protected abstract function _get_fields_info();
     // relations
     protected abstract function _get_related_table_info();
@@ -47,7 +48,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function get_primary_key()
     {
-        $indexes = $this->_get_indexes();
+        $indexes = $this->get_indexes();
         return $indexes[self::INDEX_TYPE_PRIMARY];
     }
 
@@ -280,7 +281,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         return $this->array_copy();
     }
 
-    public function __call($name, $args)
+    protected function _create_ext_methods()
     {
         if ($this->_ext_methods === null) {
             $this->_ext_methods = [];
@@ -292,8 +293,8 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             }
             $primary_key = $this->get_primary_key();
             $this->_ext_methods['get_by_' . $primary_key] = $primary_key;
-            $indexes = $this->_get_indexes();
-            if (!isset($indexes[self::INDEX_TYPE_UNIQ])) {
+            $indexes = $this->get_indexes();
+            if (isset($indexes[self::INDEX_TYPE_UNIQ])) {
                 foreach ($indexes[self::INDEX_TYPE_UNIQ] as $_i) {
                     $fname = is_array($_i)
                            ? 'get_by_' . implode('_and_', $_i)
@@ -302,7 +303,11 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
                 }
             }
         }
+        return $this;
+    }
 
+    protected function _run_ext_method($name, $args)
+    {
         if (isset($this->_ext_methods[$name])) {
             if (strcmp($name, 'set_') == 0
                 && isset($args[0])
@@ -319,6 +324,12 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             }
         }
         throw new \BadMethodCallException('no such method ' . get_class() . '::' . $name);
+    }
+
+    public function __call($name, $args)
+    {
+        $this->_create_ext_methods();
+        return $this->_run_ext_method($name, $args);
     }
 
     public function __set($field, $val)

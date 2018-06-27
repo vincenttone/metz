@@ -16,8 +16,9 @@ abstract class Model extends \ArrayObject
         self::CHANGE_DEL => [],
     ];
     protected $_enable_cache = true;
+    protected $_ext_methods = null;
 
-    abstract protected function _get_binding_dao();
+    abstract protected function _get_binding_dao_class();
 
     public function __construct($input = array(), $flags = 0, $iterator_class = "ArrayIterator")
     {
@@ -47,7 +48,7 @@ abstract class Model extends \ArrayObject
             $id = $this->_cur;
         }
         $daos = DaoManager::manager()
-              ->from($this->_get_binding_dao())
+              ->from($this->_get_binding_dao_class())
               ->filter($id)
               ->get();
         return $this->_record_and_check($daos);
@@ -56,7 +57,7 @@ abstract class Model extends \ArrayObject
     public function get_by($cond, $order = null, $page = 1, $page_count = 0)
     {
         DaoManager::manager()
-            ->from($this->_get_binding_dao())
+            ->from($this->_get_binding_dao_class())
             ->filter_by($cond);
         $page_count == 0 || $DaoManager::manager()->paging($page, $page_count);
         $daos = DaoManager::manager()->get();
@@ -66,7 +67,7 @@ abstract class Model extends \ArrayObject
     public function get_related($daos)
     {
         $daos = DaoManager::manager()
-              ->from($this->_get_binding_dao())
+              ->from($this->_get_binding_dao_class())
               ->related($daos)
               ->get();
         return $this->_record_and_check($daos);
@@ -96,7 +97,7 @@ abstract class Model extends \ArrayObject
             throw exceptions\UnexpectedInput('no id for delete');
         }
         $del = DaoManager::manager()
-             ->from($this->_get_binding_dao())
+             ->from($this->_get_binding_dao_class())
              ->filter($id)
              ->del();
         $reset && $this->_reset();
@@ -106,7 +107,7 @@ abstract class Model extends \ArrayObject
     public function del_by($cond, $reset = true)
     {
         $del = DaoManager::manager()
-            ->from($this->_get_binding_dao())
+            ->from($this->_get_binding_dao_class())
             ->filter_by($cond)
             ->del();
         $reset && $this->_reset();
@@ -119,7 +120,7 @@ abstract class Model extends \ArrayObject
             throw exceptions\UnexpectedInput('empty id or data for updating');
         }
         $up = DaoManager::manager()
-            ->from($this->_get_binding_dao())
+            ->from($this->_get_binding_dao_class())
             ->filter($id)
             ->update($data);
         $reset && $this->_reset();
@@ -129,7 +130,7 @@ abstract class Model extends \ArrayObject
     public function update_by($cond, $data, $reset = true)
     {
         $up = DaoManager::manager()
-            ->from($this->_get_binding_dao())
+            ->from($this->_get_binding_dao_class())
             ->filter_by($cond)
             ->update($data);
         $reset && $this->_reset();
@@ -142,7 +143,7 @@ abstract class Model extends \ArrayObject
             throw exceptions\UnexpectedInput('empty create data');
         }
         $result = DaoManager::manager()
-            ->from($this->_get_binding_dao())
+            ->from($this->_get_binding_dao_class())
             ->create($data);
         $reset && $this->_reset();
         return $result;
@@ -204,13 +205,68 @@ abstract class Model extends \ArrayObject
         return $this;
     }
 
+    protected function _create_ext_method($index)
+    {
+        $fname = is_array($_i)
+               ? 'by_' . implode('_and_', $_i)
+               : 'by_' . $_i;
+        $this->_ext_methods['get_' . $fname] = $_i;
+        $this->_ext_methods['up_' . $fname] = $_i;
+        $this->_ext_methods['del_' . $fname] = $_i;
+        return $this;
+    }
+
+    protected function _create_ext_methods()
+    {
+        if ($this->_ext_methods === null) {
+            $this->_ext_methods = [];
+            $indexes = DaoManager::manager()->get_dao_indexes($this->_get_binding_dao_class());
+            foreach ($indexes as $_type => $_index) {
+                foreach ($_index as $__i) {
+                    $this->_create_ext_method($__i);
+                }
+            }
+        }
+        return $this;
+    }
+
+    protected function _run_ext_method($name, $args)
+    {
+        $argc = count($args);
+        $field_count = count($this->_ext_methods[$name]);
+        if (isset($this->_ext_methods[$name])) {
+            if (strcmp($name, 'get_by_') == 0
+                && $argc >= $field_count
+            ) {
+                $vals = array_slice($args, 0, $field_count);
+                $cond = array_combine($this->_ext_methods[$name], $vals);
+                $left = $field_count == $argc
+                      ? []
+                      : array_slice($args, $field_count, 3);
+                array_unshift($left, $cond);
+                return call_user_func_array([$this, 'get_by'], $left);
+            } elseif (
+                strcmp($name, 'up_by_') == 0
+                && $argc == $field_count + 1
+            ) {
+                $data = array_shift($args);
+                $cond = array_combine($this->_ext_methods[$name], $args);
+                return call_user_func_array([$this, 'update_by'], $cond);
+            } elseif (
+                strcmp($name, 'del_by_') == 0
+                && $argc == $field_count
+            ) {
+                $cond = array_combine($this->_ext_methods[$name], $args);
+                return call_user_func_array([$this, 'del_by'], $cond);
+            }
+        }
+        throw new \BadMethodCallException('no such method ' . get_class() . '::' . $name);
+    }
+
     public function __call($name, $args)
     {
-        if (strpos('get_', $name) == 0) {
-        } elseif (strpos('up_', $name) == 0) {
-        } elseif (strpos('remove_', $name) == 0) {
-        } elseif (strpos('create_', $name) == 0) {
-        }
+        $this->_create_ext_methods();
+        return $this->_run_ext_method($name, $args);
     }
 
     // array objects
