@@ -18,6 +18,7 @@ interface Driver
     public function exists();
     public function count();
     public function where($cond);
+    public function in($field, $arr);
     public function sort($fields);
     public function limit($count);
     public function offset($offset);

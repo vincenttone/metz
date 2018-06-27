@@ -4,7 +4,7 @@ use Metz\sys\Log;
 use Metz\app\metz\exceptions;
 use Metz\app\metz\configure\Driver;
 
-abstract class Dao
+abstract class Dao implements \JsonSerializable
 {
     const DATA_VAL = 1;
     const DATA_STATUS = 2;
@@ -16,22 +16,26 @@ abstract class Dao
     const DATA_STATUS_MODIFIED = 5;
     const DATA_STATUS_DELETED = 6;
 
-    const STATUS_INIT = 1;
-    const STATUS_CHANGED = 2;
-    const STATUS_SAME = 3;
-    const STATUS_NOT_EXISTS = 4;
+    const PROPERTY_STATUS_INIT = 1;
+    const PROPERTY_STATUS_CHANGED = 2;
+    const PROPERTY_STATUS_SYNCED = 3;
+    const PROPERTY_STATUS_NOT_EXISTS = 4;
 
     protected $_conn = null;
     protected $_primary_val = null;
     protected $_data = [];
-    protected $_status = self::DATA_STATUS_INIT;
+    protected $_status = self::PROPERTY_STATUS_INIT;
 
     public abstract function get_db_config();
     public abstract function get_table_name();
     public abstract function get_fields();
     public abstract function get_primary_key();
     public abstract function get_keys();
-    public abstract function get_table_relations();
+
+    public function get_primary_val()
+    {
+        return $this->_primary_val;
+    }
 
     public function load()
     {
@@ -42,7 +46,7 @@ abstract class Dao
               ->select($this->get_fields())
               ->get();
         if (empty($data)) {
-            $this->_status = self::STATUS_NOT_EXISTS;
+            $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
             return $this;
         }
         foreach ($fields as $_f => $_conf) {
@@ -65,7 +69,7 @@ abstract class Dao
                 );
             }
         }
-        $this->_status = self::STATUS_SAME;
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
 
@@ -90,7 +94,7 @@ abstract class Dao
             ->delete();
         $this->_update_data_status(self::DATA_STATUS_DELETED);
         $this->_data = [];
-        $this->_status = self::STATUS_NOT_EXISTS;
+        $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
         return $del;
     }
 
@@ -100,7 +104,7 @@ abstract class Dao
         $this->_get_connection()
             ->set_table($this->_get_table_name())
             ->insert($data);
-        $this->_status = self::STATUS_SAME;
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
 
@@ -110,7 +114,7 @@ abstract class Dao
         $this->_get_connection()
             ->set_table($this->_get_table_name())
             ->upsert($data);
-        $this->_status = self::STATUS_SAME;
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
 
@@ -125,7 +129,7 @@ abstract class Dao
             ->update($data)
             ->where([$this->$primary_key => $this->_primary_val])
             ->commit();
-        $this->_status = self::STATUS_SAME;
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
 
@@ -208,6 +212,16 @@ abstract class Dao
         return $this->conn;
     }
 
+    public function array_copy()
+    {
+        return $this->_filter_data();
+    }
+
+    public function jsonSerialize()
+    {
+        return $this->array_copy();
+    }
+
     public function __call($name, $args)
     {
         $primary_key = $this->get_primary_key();
@@ -239,7 +253,7 @@ abstract class Dao
                     self::DATA_STATUS => self::DATA_STATUS_ASSIGNED,
                 ];
             }
-            $this->_status == self::STATUS_CHANGED;
+            $this->_status == self::PROPERTY_STATUS_CHANGED;
         } else {
             throw new \UnexpectedValueException('no such property: ' . $field);
         }
@@ -247,7 +261,7 @@ abstract class Dao
 
     public function __get($field)
     {
-        if ($this->_status == self::STATUS_NOT_EXISTS) {
+        if ($this->_status == self::PROPERTY_STATUS_NOT_EXISTS) {
             return null;
         }
         if (empty($this->_data) && $this->_primary_val) {

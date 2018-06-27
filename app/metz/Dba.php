@@ -34,7 +34,7 @@ class Dba
         $key = $driver . '::' . $ip . '::' . $port;
         $db_name && $key .= $db_name;
         if (!isset($this->_conns[$key])) {
-            $this->_conns[$key] = new Connection($driver, $ip, $port, $db_name, $ext);
+            $this->_conns[$key] = new db\Connection($driver, $ip, $port, $db_name, $ext);
         }
         return $this->_conns[$key];
     }
