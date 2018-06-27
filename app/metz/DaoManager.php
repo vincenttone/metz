@@ -136,7 +136,7 @@ class DaoManager
             if ($target->$primary == null) {
                 throw new \Exception('no primary val');
             }
-            $key = $this->_get_relation_key(get_class($target), $this->_dao_cls);
+            $key = $this->_get_related_key(get_class($target), $this->_dao_cls);
             $this->in($key, $target->$primary);
         }
         return $this;
@@ -155,10 +155,10 @@ class DaoManager
          return $ins->get_primary_key();
     }
 
-    protected function _get_relation_key($current_cls, $target_cls)
+    protected function _get_related_key($current_cls, $target_cls)
     {
         $current_dao = $this->_get_dao_instance($current_cls);
         $target_dao = $this->_get_dao_instance($target_cls);
-        return $target_dao->_get_relation_key($current_cls, $current_dao->get_primary_key());
+        return $target_dao->get_related_key($current_cls, $current_dao->get_primary_key());
     }
 }
