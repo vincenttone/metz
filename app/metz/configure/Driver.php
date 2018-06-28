@@ -14,7 +14,7 @@ class Driver
         Driver::POSTGRES => null,
     ];
 
-    public static function dirver_class($driver)
+    public static function driver_class($driver)
     {
         if (isset(self::$_supporting[$driver])) {
             return self::$_supporting[$driver];
