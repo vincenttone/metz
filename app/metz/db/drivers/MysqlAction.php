@@ -148,7 +148,11 @@ class MysqlAction
             $str .= 'ON DUNPLICATE KEY UPDATE ' . $this->_get_update_str();
             break;
         }
-        return [$str, $this->_get_counted_data()];
+        return [
+            'type' => $this->_type,
+            'prepare_str' => $str,
+            'data' => $this->_get_counted_data(),
+        ];
     }
 
     public function set_table($table)

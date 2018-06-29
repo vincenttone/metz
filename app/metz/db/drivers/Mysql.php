@@ -1,6 +1,8 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
+use Metz\app\metz\exceptions;
+
 class Mysql implements Driver
 {
     protected $_conn = null;
@@ -119,14 +121,46 @@ class Mysql implements Driver
         return $this;
     }
 
+    public function get()
+    {
+        $exec_info = $this->_acts->get_exec_info();
+        $sth = $this->_conn->prepare($exec_info['prepare_str']);
+        $ret = $sth->execute($exec_info['data']);
+        return $sth->fetch();
+    }
+
+    public function getAll()
+    {
+        $exec_info = $this->_acts->get_exec_info();
+        $sth = $this->_conn->prepare($exec_info['prepare_str']);
+        $ret = $sth->execute($exec_info['data']);
+        return $sth->fetchAll();
+    }
+
     public function exec()
     {
         if (is_array($this->_acts)) { // transaction, not support now
         } else {
             $exec_info = $this->_acts->get_exec_info();
-            $this->_conn->prepare($exec_info['prepare_str']);
-            return $this->_conn->exec($exec_info['data']);
+            $sth = $this->_conn->prepare($exec_info['prepare_str']);
+            $ret = $sth->execute($exec_info['data']);
+            if ($ret) {
+                switch ($exec_info['type']) {
+                case MysqlAction::TYPE_INSERT:
+                case MysqlAction::TYPE_UPDATE:
+                    return $this->_conn->getLastInsertId();
+                case MysqlAction::TYPE_SELECT:
+                    return $this->_conn->fetchAl();
+                case MysqlAction::TYPE_UPDATE:
+                case MysqlAction::TYPE_DELETE:
+                default:
+                    return $sth->rowCount();
+                }
+            } else {
+                throw new exceptions\ExecuteFailed(json_encode($sth->errorInfo()));
+            }
         }
+        throw new exceptions\ExecuteFailed('executing option not supported');
     }
 
     protected function _prepare_and_run($prepare_str, $arr)
