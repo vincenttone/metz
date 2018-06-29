@@ -6,8 +6,13 @@ use Metz\app\metz\exceptions;
 class MysqlAction
 {
     const STATUS_NORMAL = 1;
-    const STATUS_EXPECT_UPSERT = 2;
-    const STATUS_EXPECT_ON_CONFLICT = 3;
+    /*
+    const STATUS_READY = 2;
+    const STATUS_EXPECT_INSERT = 3;
+    const STATUS_EXPECT_UPDATE = 4;
+    */
+    const STATUS_EXPECT_UPSERT = 5;
+    const STATUS_EXPECT_ON_CONFLICT = 6;
 
     const INFO_KEY_TBL = 'table';
     const INFO_KEY_FIELDS = 'fields';
@@ -46,6 +51,11 @@ class MysqlAction
     public function has_type()
     {
         return $this->_type === null;
+    }
+
+    public function is_ready()
+    {
+        return $this->_status == self::STATUS_NORMAL;
     }
 
     public function update_type($type)

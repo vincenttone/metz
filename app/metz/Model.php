@@ -64,11 +64,11 @@ abstract class Model extends \ArrayObject
         return $this->_record_and_check($daos);
     }
 
-    public function get_related($daos)
+    public function get_related($dao)
     {
         $daos = DaoManager::manager()
               ->from($this->_get_binding_dao_class())
-              ->related($daos)
+              ->related($dao)
               ->get();
         return $this->_record_and_check($daos);
     }
