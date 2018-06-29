@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\exceptions;
+namespace Metz\app\metz\exceptions\db;
 
 class UnexpectedInput extends Db
 {

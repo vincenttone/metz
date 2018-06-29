@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz;
 use Metz\sys\Log;
-use Metz\app\metz\exceptions;
+use Metz\app\metz\exceptions\db;
 use Metz\app\metz\configure\Driver;
 
 abstract class Dao implements \JsonSerializable, \ArrayAccess
@@ -127,7 +127,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
                     self::DATA_STATUS => self::DATA_STATUS_LOADED,
                 ];
             } else {
-                throw new exceptions\UnexpectedValue(
+                throw new exceptions\db\UnexpectedValue(
                     [
                         'err' => 'Unpected result when load data',
                         'conn' => json_encode($this->_conn),
@@ -244,7 +244,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         if ($this->_conn) {
             try {
                 $this->_conn->select_db($db_name);
-            } catch (exceptions\Db $ex) {
+            } catch (exceptions\db\Db $ex) {
                 Log::warning($ex);
                 $this->_conn = null;
             }

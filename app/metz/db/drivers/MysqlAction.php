@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
-use Metz\app\metz\exceptions;
+use Metz\app\metz\exceptions\db;
 
 class MysqlAction
 {
@@ -70,14 +70,14 @@ class MysqlAction
             } elseif ($this->_status == self::STATUS_EXPECT_UPSERT) {
                 $this->_status = self::STATUS_NORMAL;
             } else {
-                throw exceptions\unexpectedInput([
+                throw exceptions\db\unexpectedInput([
                     'err' => 'unexpect action type',
                     'current' => $this->_type,
                     'new' => $type,
                 ]);
             }
         } else {
-            throw exceptions\unexpectedInput([
+            throw exceptions\db\unexpectedInput([
                 'err' => 'unexpect action type',
                 'current' => $this->_type,
                 'new' => $type,
@@ -282,7 +282,7 @@ class MysqlAction
             $count = count($this->_info[self::INFO_KEY_INSERT][0]);
             foreach ($this->_info[self::INFO_KEY_INSERT] as $_d) {
                 if (count($_d) != $count) {
-                    throw exceptions\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
+                    throw exceptions\db\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
                 }
                 $data = array_merge($data, $_d);
                 $str_arr[] = '(' . implode(', ', array_fill(0, $count, '?')) . ')';
@@ -290,7 +290,7 @@ class MysqlAction
             $this->_data = array_merge($this->_data, $data);
             return implode(', ', $str_arr);
         } else {
-            throw exceptions\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
+            throw exceptions\db\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
         }
     }
 
@@ -305,7 +305,7 @@ class MysqlAction
             }
             return implode(', ', $strs);
         } else {
-            throw exceptions\unexpectedInput('unexpect update data: ' . json_encode($this->_info));
+            throw exceptions\db\unexpectedInput('unexpect update data: ' . json_encode($this->_info));
         }
     }
 
@@ -329,7 +329,7 @@ class MysqlAction
                         break;
                     case 'in':
                         if (!is_array($_v[1])) {
-                            throw new exceptions\UnexpectedInput(
+                            throw new exceptions\db\UnexpectedInput(
                                 'unexpect where in data: ' . json_encode($this->_info[self::INFO_KEY_WHERE])
                             );
                         }

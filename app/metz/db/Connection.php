@@ -2,7 +2,7 @@
 namespace Metz\app\metz\db;
 
 use Metz\app\metz\configure\Driver;
-use Metz\app\metz\exceptions;
+use Metz\app\metz\exceptions\db;
 
 use Metz\app\metz\db\drivers;
 

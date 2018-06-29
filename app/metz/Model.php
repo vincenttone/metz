@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz;
 
-use Metz\app\metz\exceptions;
+use Metz\app\metz\exceptions\db;
 
 abstract class Model extends \ArrayObject
 {
@@ -94,7 +94,7 @@ abstract class Model extends \ArrayObject
     public function del($id, $reset = true)
     {
         if (empty($id)) {
-            throw exceptions\UnexpectedInput('no id for delete');
+            throw exceptions\db\UnexpectedInput('no id for delete');
         }
         $del = DaoManager::manager()
              ->from($this->_get_binding_dao_class())
@@ -117,7 +117,7 @@ abstract class Model extends \ArrayObject
     public function update($id, $data, $reset = true)
     {
         if (empty($id) || empty($data)) {
-            throw exceptions\UnexpectedInput('empty id or data for updating');
+            throw exceptions\db\UnexpectedInput('empty id or data for updating');
         }
         $up = DaoManager::manager()
             ->from($this->_get_binding_dao_class())
@@ -140,7 +140,7 @@ abstract class Model extends \ArrayObject
     public function create($data, $reset = true)
     {
         if (empty($data)) {
-            throw exceptions\UnexpectedInput('empty create data');
+            throw exceptions\db\UnexpectedInput('empty create data');
         }
         $result = DaoManager::manager()
             ->from($this->_get_binding_dao_class())

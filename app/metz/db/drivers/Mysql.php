@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
-use Metz\app\metz\exceptions;
+use Metz\app\metz\exceptions\db;
 
 class Mysql implements Driver
 {
@@ -157,10 +157,10 @@ class Mysql implements Driver
                     return $sth->rowCount();
                 }
             } else {
-                throw new exceptions\ExecuteFailed(json_encode($sth->errorInfo()));
+                throw new exceptions\db\ExecuteFailed(json_encode($sth->errorInfo()));
             }
         }
-        throw new exceptions\ExecuteFailed('executing option not supported');
+        throw new exceptions\db\ExecuteFailed('executing option not supported');
     }
 
     protected function _prepare_and_run($prepare_str, $arr)
