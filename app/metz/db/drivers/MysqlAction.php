@@ -151,6 +151,80 @@ class MysqlAction
         return [$str, $this->_get_counted_data()];
     }
 
+    public function set_table($table)
+    {
+        $this->_info[self::INFO_KEY_TBL] = $table;
+        return $this;
+    }
+
+    public function set_fields($fields)
+    {
+        $this->_info[self::INFO_KEY_FIELDS] = $fields;
+        return $this;
+    }
+
+    public function count($fields = null)
+    {
+        $fields && $this->set_fields($fields);
+        $this->_info[self::INFO_KEY_COUNT] = 1;
+        return $this;
+    }
+
+    public function exists($fields = null)
+    {
+        $fields && $this->set_fields($fields);
+        $this->_info[self::INFO_KEY_EXISTS] = 1;
+        return $this;
+    }
+
+    public function limit($count)
+    {
+        $count && $this->_info[self::INFO_KEY_LIMIT] = $count;
+        return $this;
+    }
+
+    public function offset($count)
+    {
+        $count && $this->_info[self::INFO_KEY_OFFSET] = $count;
+        return $this;
+    }
+
+    public function insert($data)
+    {
+        $first = reset($data);
+        if (is_array($frist)) {
+            isset($first[0]) || $this->set_fields(array_keys($first));
+            $this->_info[self::INFO_KEY_INSERT] = empty($this->_info[self::INFO_KEY_INSERT])
+                                                ? $data
+                                                : array_merge($this->_info[self::INFO_KEY_INSERT], $data);
+        } else {
+            isset($data[0])  || $this->_get_current_act()->set_fields(array_keys($data));
+            if (empty($this->_info[self::INFO_KEY_INSERT])) {
+                $this->_info[self::INFO_KEY_INSERT] = [$data];
+            } else {
+                $this->_info[self::INFO_KEY_INSERT][] = $data;
+            }
+        }
+        return $this;
+    }
+
+    public function update()
+    {
+        $first = reset($data);
+        if (is_array($frist)) {
+            $this->_info[self::INFO_KEY_UPDATE] = empty($this->_info[self::INFO_KEY_UPDATE])
+                                                ? $data
+                                                : array_merge($this->_info[self::INFO_KEY_UPDATE], $data);
+        } else {
+            if (empty($this->_info[self::INFO_KEY_UPDATE])) {
+                $this->_info[self::INFO_KEY_UPDATE] = [$data];
+            } else {
+                $this->_info[self::INFO_KEY_UPDATE][] = $data;
+            }
+        }
+        return $this;
+    }
+
     protected function _get_fields_str($default = '*')
     {
         $data = null;
@@ -223,17 +297,78 @@ class MysqlAction
 
     protected function _get_where_str()
     {
+        $str = ' WHERE ';
+        $str_arr = [];
+        $data = [];
+        foreach ($this->_info[self::INFO_KEY_WHERE] as $_k => $_v) {
+            if (is_array($_v)) {
+                if (isset($_v[0]) && isset($_v[1])) {
+                    switch(trim($_v[0])) {
+                    case '=':
+                    case '>':
+                    case '<':
+                    case '>=':
+                    case '<=':
+                    case 'like':
+                        $str_arr[] = $_k . ' ' . $_v[0] . ' ?';
+                        $data[] = $_v[1];
+                        break;
+                    case 'in':
+                        if (!is_array($_v[1])) {
+                            throw new exceptions\UnexpectedInput(
+                                'unexpect where in data: ' . json_encode($this->_info[self::INFO_KEY_WHERE])
+                            );
+                        }
+                        $str_arr[] = '(' . implode(', ', array_fill(0, count($_v[1]), '?')) . ')';
+                        $data = array_merge($data, $_v[1]);
+                        break;
+                    }
+                }
+            } else {
+                $str_arr[] = $_k . ' = ' . ' ?';
+                $data[] = $_v[1];
+            }
+        }
+        if (empty($str_arr)) {
+            $str = '';
+        } else {
+            $str .= implode(' AND ', $str_arr);
+            $this->_data = array_merge($this->_data, $data);
+        }
+        return $str;
     }
+
     protected function _get_sort_str()
     {
+        $str = ' ORDER BY ';
+        $arr = [];
+        foreach ($this->_info[self::INFO_KEY_SORT] as $_f => $_d) {
+            $arr[] = $_f . ' ' . $_v;
+        }
+        if (empty($arr)) {
+            $str = '';
+        } else {
+            $str .= implode(', ', $arr);
+        }
+        return $str;
     }
+
     protected function _get_offset_str()
     {
+        return isset($this->_info[self::INFO_KEY_OFFSET]) && $this->_info[self::INFO_KEY_OFFSET] > 0
+            ? ' OFFSET ' . $this->_info[self::INFO_KEY_OFFSET]
+            : '';
     }
+
     protected function _get_limit_str()
     {
+        return isset($this->_info[self::INFO_KEY_LIMIT]) && $this->_info[self::INFO_KEY_LIMIT] > 0
+            ? ' LIMIT ' . $this->_info[self::INFO_KEY_LIMIT]
+            : '';
     }
+
     protected function _get_counted_data()
     {
+        return $this->_data;
     }
 }
