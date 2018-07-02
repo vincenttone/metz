@@ -5,29 +5,69 @@ use Metz\app\metz\exceptions;
 
 class RenderEngine
 {
+    const TYPE_TXT = 1;
+    const TYPE_JSON = 2;
+    const TYPE_XML  = 3;
+    const TYPE_HTML = 4;
+    const TYPE_JAVASCRIPT = 5;
+    const TYPE_JPG = 11;
+    const TYPE_JPEG = 12;
+    const TYPE_PNG = 13;
+    const TYPE_GIF = 14;
+
+    protected static $_content_type_map = [
+        self::TYPE_TXT  => 'text/plain',
+        self::TYPE_JSON => 'application/json',
+        self::TYPE_XML  => 'text/xml',
+        self::TYPE_HTML => 'text/html',
+        self::TYPE_JAVASCRIPT => 'application/x-javascript',
+        self::TYPE_JPEG => 'image/jpeg',
+        self::TYPE_JPG  => 'application/x-jpg',
+        self::TYPE_PNG  => 'image/png',
+        self::TYPE_GIF  => 'image/gif',
+    ];
+    
     protected static $_instance = null;
 
     protected $_template_dir = null;
     protected $_template_suffix = 'phtml';
+    protected $_buffer = '';
+    protected $_render_fmt = self::TYPE_HTML;
 
     protected function __clone()
     {
         throw new \Exception('clone failed!');
     }
 
-    public static function engine($dir, $suffix = 'phtml')
+    public static function engine($dir, $globals = [], $suffix = 'phtml')
     {
         if (self::$_instance === null) {
             $kls = get_class();
-            self::$_instance = new $kls($dir, $suffix);
+            self::$_instance = new $kls($dir, $globals, $suffix);
         }
         return self::$_instance;
     }
 
-    protected function __construct($dir, $suffix = 'phtml')
+    public static function format($type)
+    {
+        return self::engine()->set_render_format($type);
+    }
+
+    public static function json($data)
+    {
+        return self::engine()->render_to_json($data);
+    }
+
+    public static function html($template, $var = [], $base = null)
+    {
+        return self::engine()->render($template, $var, $base);
+    }
+
+    protected function __construct($dir, $globals = [], $suffix = 'phtml')
     {
         $this->set_template_dir($dir);
         $this->set_template_suffix($suffix);
+        $this->assign_global_vars($globals);
     }
 
     public function set_template_dir($template_dir)
@@ -42,61 +82,49 @@ class RenderEngine
         return $this;
     }
     /**
-     * @desc nest render templates base on $base_template
-     * @param $children
-     * @param $base_template
-     * @return void
-     */
-    public function nest_render($children, $base_template)
-    {
-        if (!is_array($children)) {
-            throw exceptions\common\UnexpectParamsType('nest render params err: ' . json_encode($children));
-        }
-        $template_data = [];
-        foreach ($children as $_name => $_temp_info) {
-            $var = [];
-            if (!isset($_temp_info)) {
-                continue;
-            }
-            $temp = $_temp_info[0];
-            isset($_temp_info[1]) && $var = $_temp_info[1];
-            $_temp_data = $this->_render_template($temp, $var);
-            if ($_temp_data === false ) {
-                continue;
-            }
-            $template_data[$_name] = $_temp_data;
-        }
-        $this->render($base_template, $template_data);
-    }
-
-    /**
      * @param array $template
      * @param array $var
      */
-    function render($template, array $var = [])
+    function render($template, array $var = [], $base_template = null)
     {
-        if (empty($this->_template_dir) || !is_dir($this->_template_dir)) {
-            throw new exceptions\file\NotExists(
-                __METHOD__.'please set correct template dir and check is a dir: '
-                .var_export($template, true));
+        if ($base_template === null) {
+            $this->_render_template($template, $var);
+        } else {
+            $base_var = [];
+            foreach ($template as $_name => $_t) {
+                $_v = isset($var[$_name]) ? $var[$_name] : [];
+                $base_var[$_name] = $this->_render_template($_t, $_v);
+            }
+            $this->_render_template($base_template, $base_var);
         }
-        echo $this->_render_template($template, $var);
+        return $this->_buffer;
     }
-
     /**
      * @param array $data
      * @param string $format
      */
-    function output($data, $format = 'json')
+    function render_to_json($data)
     {
-        header("Content-Type: application/json");
-        switch ($format) {
-            case 'json':
-            default:
-                $data = json_encode($data);
-                break;
+        $this->_buffer = json_encode($data);
+        return $this->_buffer;
+    }
+    
+    function display()
+    {
+        echo $this->_buffer;
+        return $this;
+    }
+    /**
+     * @desc set render format
+     * @param $type=self::TYPE_HTML
+     * @return 
+     */
+    function set_render_format($type = self::TYPE_HTML)
+    {
+        if (isset(self::$_content_type_map[$type])) {
+            $this->_render_fmt = $type;
+            header('Content-Type: ' . self::$_content_type_map[$type]);
         }
-        echo $data;
     }
     /**
      * @param array $template
@@ -104,6 +132,11 @@ class RenderEngine
      */
     public function get_template_file($template)
     {
+        if (empty($this->_template_dir) || !is_dir($this->_template_dir)) {
+            throw new exceptions\file\NotExists(
+                __METHOD__.'please set correct template dir and check is a dir: '
+                .var_export($template, true));
+        }
         $template_file = $this->_template_dir . '/' . $template . '.' . $this->_template_suffix;
         if (is_file($template_file)) {
             return $template_file;
@@ -139,9 +172,9 @@ class RenderEngine
         ob_end_clean();
         ob_start();
         require $template_file;
-        $content = ob_get_contents();
+        $this->_buffer = ob_get_contents();
         ob_end_clean();
         ob_start();
-        return $content;
+        return $this;
     }
 }
