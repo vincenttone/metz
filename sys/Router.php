@@ -48,18 +48,28 @@ class Router
 		if (preg_match('/(\.\.|\"|\'|<|>)/', $request_uri)) {
 			return array('errno' => self::ERRNO_FORBIDDEN, 'data' => "permission denied.");
 		}
-
 		// get display format
-        $display = '';
-		if (($p = strrpos($request_uri, '.')) !== false) {
-			$tail = substr($request_uri, $p + 1);
-			if(preg_match('/^[a-zA-Z0-9]+$/', $tail)) {
-                $display  = $tail;
-				$request_uri = substr($request_uri, 0, $p);
-			}
-		}
         $url_piece = explode('/', $request_uri);
-        return ['errno' => self::ERRNO_OK, 'data' => ['info' => $url_piece, 'suffix' => $display]];
+        $display = '';
+        $file = '';
+        if (isset($url_piece[0])) {
+            if (($p = strrpos($url_piece[0], '.')) !== false) {
+                $tail = substr($url_piece[0], $p + 1);
+                if(preg_match('/^[a-zA-Z0-9]+$/', $tail)) {
+                    $display  = $tail;
+                    $file = array_shift($url_piece);
+                }
+            }
+        }
+        return [
+            'errno' => self::ERRNO_OK,
+            'data' => [
+                'file' => $file,
+                'uri' => implode('/', $url_piece),
+                'piece' => $url_piece,
+                'suffix' => $display,
+            ]
+        ];
 	}
 
     /**
@@ -115,7 +125,7 @@ class Router
         $data = '<!DOCTYPE html><head></head><body>';
         $data .= '<pre>';
         $data .= '--------------------------------'.PHP_EOL;
-        $data .= ' '.implode('/',$url_piece['info']).PHP_EOL;
+        $data .= ' '.implode('/',$url_piece['piece']).PHP_EOL;
         $data .= '--------------------------------'.PHP_EOL;
         $data .= ' Welcome here! '.PHP_EOL;
         $data .= ' Please set you own route.'.PHP_EOL;
