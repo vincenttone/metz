@@ -24,17 +24,17 @@ class Dba
         return self::$_instance;
     }
 
-    public static function connection($driver, $ip, $port, $db_name = null, $ext = [])
+    public static function connection($driver, $ip, $port, $user, $password, $db_name = null, $ext = [])
     {
-        return self::getInstance()->get_connection($driver, $ip, $port, $db_name, $ext);
+        return self::getInstance()->get_connection($driver, $ip, $port, $user, $password, $db_name, $ext);
     }
 
-    public function get_connection($driver, $ip, $port, $db_name = null, $ext = [])
+    public function get_connection($driver, $ip, $port, $user, $password, $db_name = null, $ext = [])
     {
         $key = $driver . '::' . $ip . '::' . $port;
         $db_name && $key .= $db_name;
         if (!isset($this->_conns[$key])) {
-            $this->_conns[$key] = new db\Connection($driver, $ip, $port, $db_name, $ext);
+            $this->_conns[$key] = new db\Connection($driver, $ip, $port, $user, $password, $db_name, $ext);
         }
         return $this->_conns[$key];
     }

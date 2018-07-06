@@ -9,7 +9,7 @@ class Restful extends Route
     const METHOD_UPDATE = 'update';
     const METHOD_DELETE = 'delete';
     const METHOD_GET = 'get';
-    const METHOD_LIST = 'list';
+    const METHOD_LIST = 'index';
 
     const ACTION_PATCH = 'patch';
     const ACTION_PUT = 'put';
@@ -99,15 +99,14 @@ class Restful extends Route
                     }
                 }
             }
-            if ($this->_klass === null
-                || $this->_method === null
-                || !method_exists($this->_klass, $this->_method)
-            ) {
-                return false;
-            }
-            return true;
         }
-        return false;
+        if ($this->_klass === null
+            || $this->_method === null
+            || !method_exists($this->_klass, $this->_method)
+        ) {
+            return false;
+        }
+        return true;
     }
 
     public function exec()

@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz\exceptions\db;
-use Metz\exceptions\db\MetzEx;
+use Metz\app\metz\exceptions\Metz;
 
-class Db extends \MetzEx
+class Db extends Metz
 {
 }

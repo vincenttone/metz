@@ -12,18 +12,23 @@ class Connection implements \JsonSerializable
     protected $_dirver_name = null;
     protected $_ip = null;
     protected $_port = null;
+    protected $_user = 'root';
+    protected $_password = '';
     protected $_ext = [];
     protected $_auth_mode = null;
     protected $_db_name = null;
     protected $_connection = null;
 
-    public function __construct($driver, $ip, $port, $db_name = null, $ext = [])
+    public function __construct($driver, $ip, $port, $user, $password, $db_name = null, $ext = [])
     {
         $this->_select_driver($driver)
             ->_set_ip($ip)
-            ->_set_port($port);
+            ->_set_port($port)
+            ->_set_user($user)
+            ->_set_password($password);
         $db_name && $this->_set_db_name($db_name);
         empty($ext) || $this->_ext = $ext;
+        $this->connect();
     }
 
     public function __destruct()
@@ -34,7 +39,14 @@ class Connection implements \JsonSerializable
     public function connect()
     {
         if ($this->_connection === null) {
-            $this->_connection = $this->_driver->connect($this->_ip, $this->_port, $ext);
+            $this->_connection = $this->_driver->connect(
+                $this->_ip,
+                $this->_port,
+                $this->_user,
+                $this->_password,
+                $this->_db_name,
+                $this->_ext
+            );
         } else {
             $this->_check_connection();
         }
@@ -81,6 +93,18 @@ class Connection implements \JsonSerializable
             );
         }
         $this->_port = $port;
+        return $this;
+    }
+
+    protected function _set_user($user)
+    {
+        $this->_user = $user;
+        return $this;
+    }
+
+    protected function _set_password($password)
+    {
+        $this->_password = $password;
         return $this;
     }
 
