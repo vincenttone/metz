@@ -2,7 +2,6 @@
 namespace Metz\app\metz\route;
 
 use Metz\app\metz\exceptions;
-use Metz\sys\Log;
 
 class Restful extends Route
 {
@@ -18,7 +17,7 @@ class Restful extends Route
     const ACTION_DELETE = 'delete';
     const ACTION_GET = 'get';
 
-    public function __construct($uri, $klass, $method = null)
+    public function __construct($uri, $klass = null, $method = null)
     {
         parent::__construct($uri, $klass, $method);
     }
@@ -33,9 +32,12 @@ class Restful extends Route
         if (strpos($uri, $this->_uri) === 0) {
             $len = strlen($this->_uri);
             $left_str = trim(substr($uri, $len), '/');
-            $left = explode('/', $left_str);
+            $left = empty($left_str) ? [] : explode('/', $left_str);
             $left_count = count($left);
             $action = $this->_get_action();
+            if (empty($this->_prefix) && empty($this->_klass)) {
+                $this->_klass = str_replace('/', '\\', $this->_uri);
+            }
             if ($this->_klass) {
                 $args = $left;
                 switch ($action) {

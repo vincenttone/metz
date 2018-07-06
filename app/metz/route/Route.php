@@ -15,7 +15,7 @@ abstract class Route
     protected $_method = null;
     protected $_args = [];
 
-    public function __construct($uri, $klass, $method = null)
+    public function __construct($uri, $klass = null, $method = null)
     {
         $this->_set_uri($uri);
         if ($klass) {
