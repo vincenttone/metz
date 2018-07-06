@@ -3,5 +3,5 @@ namespace Metz\app\metz\exceptions\http;
 
 class NotFound extends Http
 {
-    private $_code = 404;
+    protected $code = 404;
 }

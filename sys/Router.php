@@ -65,7 +65,7 @@ class Router
             'errno' => self::ERRNO_OK,
             'data' => [
                 'file' => $file,
-                'uri' => implode('/', $url_piece),
+                'uri' => isset($url_piece[0]) ? implode('/', $url_piece) : '/',
                 'piece' => $url_piece,
                 'suffix' => $display,
             ]
