@@ -1,0 +1,8 @@
+[db_conf]
+driver = mysql
+ip = 127.0.0.1
+port = 3306
+db = dbname
+user = root
+password = 
+charset = utf8
