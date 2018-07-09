@@ -22,6 +22,8 @@ class Route
             new C('/c/play/m',          \Metz\app\test\A::class, 'z'),
             */
             new C('/',           '\\Metz\\app\\metz'),
+            // new R(RESTFUL_URI, ROUTE_CLASS, ROUTE_METHOD),
+            // new C(COMMON_URI, ROUTE_CLASS, ROUTE_METHOD),
         ];
     }
 }

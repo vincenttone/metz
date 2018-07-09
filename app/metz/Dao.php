@@ -33,6 +33,11 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     const INDEX_TYPE_UNIQ = 2;
     const INDEX_TYPE_COMMON = 3;
 
+    const FIELD_INFO_TYPE = 'type';
+    const FIELD_INFO_AUTO_INCREMENT = 'ai';
+    const FIELD_INFO_NULLABLE = 'nullable';
+    const FIELD_INFO_DEFAULT = 'default';
+
     protected $_conn = null;
     protected $_primary_val = null;
     protected $_data = [];
@@ -107,6 +112,27 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     {
         $fields_info = $this->_get_fields_info();
         return array_keys($fields_info);
+    }
+
+    public function generate_table()
+    {
+        $this->_get_connection()->set_monitor(
+            function ($str) {
+                Log::info("[DB execute info]\t" . $str);
+            }
+        );
+        $create_table = $this->_get_connection()
+            ->create_table(
+                $this->_get_table_name(),
+                $this->_get_fields_info(),
+                $this->get_primary_key()
+            );
+        $create_indexes = $this->_get_connection()
+            ->create_indexes(
+                $this->_get_table_name(),
+                $this->get_indexes()
+            );
+        return $this;
     }
 
     protected function _package($data)
@@ -238,9 +264,11 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         if (!isset($conf['ip'])
             || !isset($conf['port'])
         ) {
+            throw new exceptions\db\UnexpectedInput('unexpect db configure: ' . json_encode($conf));
         }
         $driver = isset($conf['driver']) ? $conf['driver'] : Driver::MYSQL;
         $ext = isset($conf['ext']) ? $conf['ext'] : [];
+        $db_name = $conf['db'];
         if ($this->_conn) {
             try {
                 $this->_conn->select_db($db_name);
@@ -249,10 +277,18 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
                 $this->_conn = null;
             }
         }
-        if ($this->_conn) {
-            $this->conn = Dba::connection($driver, $conf['ip'], $conf['port'], $ext);
+        if ($this->_conn === null) {
+            $this->_conn = Dba::connection(
+                $driver,
+                $conf['ip'],
+                $conf['port'],
+                $conf['user'] ?? 'root',
+                $conf['password'] ?? '',
+                $db_name,
+                $ext
+            );
         }
-        return $this->conn;
+        return $this->_conn;
     }
     /**
      * @desc select by uniq indexes

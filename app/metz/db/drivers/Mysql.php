@@ -1,12 +1,15 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
-use Metz\app\metz\exceptions\db;
+use Metz\app\metz\Dao;
+use Metz\app\metz\exceptions;
 
 class Mysql implements Driver
 {
     protected $_conn = null;
-    protected $_charset = 'utf-8';
+    protected $_charset = 'utf8';
+    protected $_engine = 'InnoDB';
+    protected $_monitor = null;
 
     protected $_acts = null;
 
@@ -19,7 +22,7 @@ class Mysql implements Driver
     {
         $dsn = 'mysql:host=' . $ip . ';port=' . $port;
         $db && $dsn .= ';dbname=' . $db;
-        $this->_conn = new PDO($dsn, $username, $password);
+        $this->_conn = new \PDO($dsn, $user, $password);
         isset($ext['charset']) && $this->_charset = $ext['charset'];
         return $this->set_charset($this->_charset);
     }
@@ -32,7 +35,7 @@ class Mysql implements Driver
     public function set_charset($charset)
     {
         $this->_charset = $charset;
-        $this->_prepare_and_run('set names ?;', [$charset]);
+        $this->_prepare_and_run('set names :charset;', [':charset' => $charset]);
         return $this;
     }
 
@@ -43,13 +46,19 @@ class Mysql implements Driver
 
     public function select_db($db_name)
     {
-        $this->_prepare_and_run('use ?;', [$db_name]);
+        $this->_prepare_and_run('use ' . $db_name);
         return $this;
     }
 
     public function set_table($table)
     {
         $this->_get_current_act()->set_table($table);
+        return $this;
+    }
+
+    public function set_monitor($monitor)
+    {
+        $this->_monitor = $monitor;
         return $this;
     }
 
@@ -121,6 +130,12 @@ class Mysql implements Driver
         return $this;
     }
 
+    public function on_conflict($keys)
+    {
+        $this->_get_current_act()->add_info(MysqlAction::INFO_KEY_ON_CONFLICT, $keys);
+        return $this;
+    }
+
     public function get()
     {
         $exec_info = $this->_acts->get_exec_info();
@@ -129,7 +144,7 @@ class Mysql implements Driver
         return $sth->fetch();
     }
 
-    public function getAll()
+    public function get_all()
     {
         $exec_info = $this->_acts->get_exec_info();
         $sth = $this->_conn->prepare($exec_info['prepare_str']);
@@ -163,10 +178,71 @@ class Mysql implements Driver
         throw new exceptions\db\ExecuteFailed('executing option not supported');
     }
 
-    protected function _prepare_and_run($prepare_str, $arr)
+    public function create_table($table_name, $fields_info, $primary_key)
     {
-        $this->_conn->prepare($prepare_str);
-        return $this->_conn->exec($arr);
+        $sql = 'CREATE TABLE IF NOT EXISTS `' . $table_name . '` (';
+        foreach ($fields_info as $_f => $_i) {
+            $sql .= $_f . ' ' . $_i['type'];
+            isset($_i[Dao::FIELD_INFO_AUTO_INCREMENT])
+                && $sql .= ' AUTO_INCREMENT ';
+            isset($_i[Dao::FIELD_INFO_NULLABLE])
+                && $_i[Dao::FIELD_INFO_NULLABLE] === false
+                && $sql .= ' NOT NULL ';
+            if (isset($_i[Dao::FIELD_INFO_DEFAULT])) {
+                $sql .= ' DEFAULT ? ';
+                $data[] = $_i[Dao::FIELD_INFO_DEFAULT];
+            }
+            $sql .= ',';
+        }
+        $sql .= ' PRIMARY KEY (' . $primary_key;
+        $sql .= ')) ENGINE = ' . $this->_engine
+             . ' DEFAULT CHARSET = ' . $this->_charset;
+        return $this->_prepare_and_run($sql, $data);
+    }
+
+    public function create_indexes($table, $indexes)
+    {
+        if (isset($indexes[Dao::INDEX_TYPE_COMMON][0])) {
+            foreach ($indexes[Dao::INDEX_TYPE_COMMON] as $_i) {
+                $idx = is_array($_i) ? 'idx_' . implode('_', $_i) : 'idx_' .$_i;
+                $sql = 'CREATE INDEX ' . $idx;
+                $sql .= ' ON ' . $table;
+                $sql .= is_array($_i) ? ' (' . implode(', ' , $_i) . ')' : '(' . $_i . ')';
+                $this->_prepare_and_run($sql, []);
+            }
+        }
+        if (isset($indexes[Dao::INDEX_TYPE_UNIQ][0])) {
+            foreach ($indexes[Dao::INDEX_TYPE_UNIQ] as $_i) {
+                $idx = is_array($_i) ? 'idx_' . implode('_', $_i) : 'idx_' .$_i;
+                $sql = 'CREATE UNIQUE INDEX ' . $idx;
+                $sql .= ' ON ' . $table;
+                $sql .= is_array($_i) ? ' (' . implode(', ' , $_i) . ')' : '(' . $_i . ')';
+                $this->_prepare_and_run($sql, []);
+            }
+        }
+    }
+
+    protected function _prepare_and_run($prepare_str, $arr = [])
+    {
+        $sth= $this->_conn->prepare($prepare_str);
+        $exec = $sth->execute($arr);
+        if ($exec === false) {
+            throw new exceptions\db\ExecuteFailed(
+                'Execute failed, sql: ' . $sth->queryString
+                . ', error info: ' . json_encode($sth->errorInfo())
+            );
+        }
+        $str = 'Execute sql success: ' . $sth->queryString;
+        empty($arr) || $str .= ', data: ' . json_encode($arr);
+        $this->_monitor($str);
+        return true;
+    }
+
+    protected function _monitor($str)
+    {
+        $this->_monitor
+            && is_callable($this->_monitor)
+            && call_user_func($this->_monitor, $str);
     }
 
     protected function _get_current_act()
