@@ -5,6 +5,7 @@
 			"Metz\\lib\\": "lib/",
 			"Metz\\app\\": "app/"
 		},
-		"classmap": ["utils"]
+		"classmap": ["utils"],
+		"files": ["conf/route.php"]
 	}
 }
