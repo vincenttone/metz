@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz;
 use Metz\sys\Log;
-use Metz\app\metz\exceptions\db;
+use Metz\app\metz\exceptions;
 use Metz\app\metz\configure\Driver;
 
 abstract class Dao implements \JsonSerializable, \ArrayAccess

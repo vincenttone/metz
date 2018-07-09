@@ -1,6 +1,8 @@
 <?php
 namespace Metz\app\test\dao;
 
+use Metz\sys\Configure;
+
 class Test extends \Metz\app\metz\Dao
 {
     public function get_indexes()
@@ -26,15 +28,7 @@ class Test extends \Metz\app\metz\Dao
 
     protected function _get_db_config()
     {
-        return [
-            'driver' => 'mysql',
-            'ip' => '172.18.0.2',
-            'port' => '3306',
-            'user' => 'vota',
-            'password' => 'votasvotia',
-            'db' => 'votia',
-            //'ext' => ['charset' => 'utf8'],
-        ];
+        return Configure::config('db/test/votia');
     }
 
     protected function _get_related_table_info()
