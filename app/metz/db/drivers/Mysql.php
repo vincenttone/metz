@@ -182,7 +182,84 @@ class Mysql implements Driver
     {
         $sql = 'CREATE TABLE IF NOT EXISTS `' . $table_name . '` (';
         foreach ($fields_info as $_f => $_i) {
-            $sql .= $_f . ' ' . $_i['type'];
+            $sql .= $_f . ' ';
+            switch($_i[Dao::FIELD_INFO_TYPE]) {
+            case Dao::FIELD_TYPE_INT:
+                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
+                    if ($_i[Dao::FIELD_INFO_LENGTH] < 4) {
+                        $sql .= 'tinyint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 6) {
+                        $sql .= 'smallint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 12) {
+                        $sql .= 'int (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } else {
+                        $sql .= 'bigint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    }
+                } else {
+                    $sql .= 'int';
+                }
+                isset($_i[Dao::FIELD_INFO_UNSIGNED])
+                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                    && $sql .= ' unsigned ';
+                break;
+            case Dao::FIELD_TYPE_FLOAT:
+                $sql .= 'float';
+                if (isset($_i[Dao::FIELD_INFO_LENGTH][1])) {
+                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH][1] . ', ' . $_i[Dao::FIELD_INFO_LENGTH][1] . ') ';
+                }
+                isset($_i[Dao::FIELD_INFO_UNSIGNED])
+                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                    && $sql .= ' unsigned ';
+                break;
+            case Dao::FIELD_TYPE_DOUBLE:
+                $sql .= 'double';
+                if (isset($_i[Dao::FIELD_INFO_LENGTH][1])) {
+                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH][1] . ', ' . $_i[Dao::FIELD_INFO_LENGTH][1] . ') ';
+                }
+                isset($_i[Dao::FIELD_INFO_UNSIGNED])
+                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                    && $sql .= ' unsigned ';
+                break;
+            case dao::FIELD_TYPE_CHAR:
+                $sql .= 'char';
+                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
+                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                }
+                break;
+            case dao::FIELD_TYPE_VARCHAR:
+                $sql .= 'varchar';
+                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
+                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                }
+                break;
+            case Dao::FIELD_TYPE_TEXT:
+                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
+                    if ($_i[Dao::FIELD_INFO_LENGTH] < 256) {
+                        $sql .= 'tinytext(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 65536) {
+                        $sql .= 'text(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 16777216) {
+                        $sql .= 'mediumtext (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    } else {
+                        $sql .= 'longtext (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                    }
+                } else {
+                    $sql .= 'text ';
+                }
+                break;
+            case Dao::FIELD_TYPE_DATE:
+                $sql .= 'date ';
+                break;
+            case Dao::FIELD_TYPE_TIME:
+                $sql .= 'time ';
+                break;
+            case Dao::FIELD_TYPE_DATETIME:
+                $sql .= 'datetime ';
+                break;
+            case Dao::FIELD_TYPE_TIMESTAMP:
+                $sql .= 'timestamp ';
+                break;
+            }
             isset($_i[Dao::FIELD_INFO_AUTO_INCREMENT])
                 && $sql .= ' AUTO_INCREMENT ';
             isset($_i[Dao::FIELD_INFO_NULLABLE])

@@ -37,6 +37,19 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     const FIELD_INFO_AUTO_INCREMENT = 'ai';
     const FIELD_INFO_NULLABLE = 'nullable';
     const FIELD_INFO_DEFAULT = 'default';
+    const FIELD_INFO_LENGTH = 'length';
+    const FIELD_INFO_UNSIGNED = 'unsigned';
+
+    const FIELD_TYPE_INT = 1;
+    const FIELD_TYPE_FLOAT = 2;
+    const FIELD_TYPE_DOUBLE = 7;
+    const FIELD_TYPE_CHAR = 8;
+    const FIELD_TYPE_VARCHAR = 9;
+    const FIELD_TYPE_TEXT = 10;
+    const FIELD_TYPE_DATE = 11;
+    const FIELD_TYPE_TIME = 12;
+    const FIELD_TYPE_DATETIME = 13;
+    const FIELD_TYPE_TIMESTAMP = 14;
 
     protected $_conn = null;
     protected $_primary_val = null;
