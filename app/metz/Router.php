@@ -13,10 +13,6 @@ class Router
     const MODE_MULT = 1;
     const MODE_SINGLE = 2;
 
-    const ROUTER_REG_METHOD = 'register_router';
-    const DEFAULT_MODULE = 'page';
-    const DEFAULT_PATH = 'index';
-
     protected static $_instance = null;
 
     protected $_configure = [];

@@ -16,7 +16,8 @@ class Common extends Route
 
     public function match($uri)
     {
-        if (trim($uri) == '/') {
+        $uri = trim($uri);
+        if ($uri == '/' || $uri == '') {
             $uri = '/';
         } else {
             $uri = trim($uri, '/');
@@ -43,6 +44,8 @@ class Common extends Route
                     $this->_method = self::DEFAULT_METHOD;
                 }
             }
+        } else {
+            return false;
         }
         if ($this->_klass === null
             || $this->_method === null

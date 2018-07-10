@@ -11,36 +11,36 @@ class A
 
     function x()
     {
-        echo 'x';
+        echo __METHOD__;
     }
 
     function y()
     {
-        echo 'y';
+        echo __METHOD__;
     }
 
     function z()
     {
-        echo 'z';
+        echo __METHOD__;
     }
 
     function index()
     {
-        echo 'list';
+        echo __METHOD__;
     }
 
     function get($id)
     {
-        echo 'get ' . $id;
+        echo __METHOD__;
     }
 
     function update($id)
     {
-        echo 'up ' . $id;
+        echo __METHOD__;
     }
 
     function delete($id)
     {
-        echo 'del ' . $id;
+        echo __METHOD__;
     }
 }

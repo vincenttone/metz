@@ -53,7 +53,7 @@ abstract class Route
     protected function _set_uri($uri)
     {
         $this->_uri = trim($uri) == '/' ? '/' : trim($uri, '/');
-        $this->_uri_array = explode('/', $this->_uri);
+        $this->_uri_array = explode('/', trim($this->_uri, '/'));
         return $this;
     }
 }
