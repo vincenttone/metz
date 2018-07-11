@@ -82,7 +82,7 @@ class Restful extends Route
         switch ($this->_get_action()) {
         case self::ACTION_GET:
             if ($left_count > 0) {
-                $this->_args[] = $args[0];
+                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
                 $this->_method || $this->_method = self::METHOD_GET;
             } else {
                 $this->_method || $this->_method = self::METHOD_INDEX;
@@ -91,14 +91,18 @@ class Restful extends Route
         case self::ACTION_POST:
             $this->_method || $this->_method = self::METHOD_CREATE;
         case self::ACTION_PUT:
+            $this->_method || $this->_method = self::METHOD_UPDATE;
             if ($left_count > 0) {
-                $this->_args[] = $args[0];
-                $this->_method || $this->_method = self::METHOD_UPDATE;
+                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
+            } else {
+                throw new exceptions\db\unexpectedInput('put method without argument ' .  json_encode($args));
             }
         case self::ACTION_DELETE:
+            $this->_method || $this->_method = self::METHOD_DELETE;
             if ($left_count > 0) {
-                $this->_args[] = $args[0];
-                $this->_method || $this->_method = self::METHOD_DELETE;
+                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
+            } else {
+                throw new exceptions\db\unexpectedInput('put method without argument ' .  json_encode($args));
             }
         }
     }
@@ -112,7 +116,7 @@ class Restful extends Route
         case self::ACTION_GET:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = $tail;
+                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
                 $this->_method = self::METHOD_GET;
             } else {
                 $kls .= '\\' . $tail;
@@ -130,13 +134,13 @@ class Restful extends Route
         case self::ACTION_PUT:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = $tail;
+                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
                 $this->_method = self::METHOD_UPDATE;
             }
         case self::ACTION_DELETE:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = $tail;
+                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
                 $this->_method = self::METHOD_DELETE;
             }
         }
