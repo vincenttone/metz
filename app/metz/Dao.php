@@ -50,6 +50,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     const FIELD_TYPE_TIME = 12;
     const FIELD_TYPE_DATETIME = 13;
     const FIELD_TYPE_TIMESTAMP = 14;
+    const FIELD_TYPE_BOOL = 15;
 
     protected $_conn = null;
     protected $_primary_val = null;

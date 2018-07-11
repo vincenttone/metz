@@ -184,16 +184,19 @@ class Mysql implements Driver
         foreach ($fields_info as $_f => $_i) {
             $sql .= $_f . ' ';
             switch($_i[Dao::FIELD_INFO_TYPE]) {
+            case Dao::FIELD_TYPE_BOOL:
+                $sql .= 'tinyint(1) ';
+                break;
             case Dao::FIELD_TYPE_INT:
                 if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
                     if ($_i[Dao::FIELD_INFO_LENGTH] < 4) {
-                        $sql .= 'tinyint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'tinyint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
                     } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 6) {
-                        $sql .= 'smallint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'smallint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
                     } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 12) {
-                        $sql .= 'int (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'int(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
                     } else {
-                        $sql .= 'bigint (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'bigint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
                     }
                 } else {
                     $sql .= 'int';
