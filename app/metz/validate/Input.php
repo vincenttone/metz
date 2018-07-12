@@ -71,6 +71,11 @@ class Input
         return $this;
     }
 
+    public function get_val()
+    {
+        return $this->_val;
+    }
+
     public function set_regex($regex)
     {
         $this->_type = self::TYPE_RAW;
@@ -101,6 +106,7 @@ class Input
         if ($match == false) {
             $this->_tigger_error();
         }
+        return $this;
     }
 
     public function sanitize()
@@ -110,9 +116,10 @@ class Input
         } else {
             $this->_val = $this->_filter_var(FILTER_SANITIZE_STRING);
         }
+        return $this;
     }
 
-    private function _filter_var($filter, $options = 0)
+    protected function _filter_var($filter, $options = 0)
     {
         if ($options === 0) {
             return filter_var($this->_val, $filter);
@@ -121,7 +128,7 @@ class Input
         }
     }
 
-    private function _tigger_error()
+    protected function _tigger_error()
     {
         throw new exceptions\request\Request('unexpect val: ' . json_encode($this->_val));
     }
