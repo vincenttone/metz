@@ -56,6 +56,7 @@ class Router
      */
     function route($url_info)
     {
+        return $this->_route_v2($url_info);
         $url_piece = $url_info['piece'];
         $uri = $url_info['uri'];
         $match = [];
@@ -74,6 +75,35 @@ class Router
             $obj = reset($match);
             return $obj->exec();
         }
+    }
+
+    protected function _route_v2($url_info)
+    {
+        $url_piece = $url_info['piece'];
+        $url_piece_count = count($url_piece);
+        $routes = [];
+        foreach ($this->_configure as $_r) {
+            $arr = $_r->get_uri_array();
+            $_c = count($arr);
+            if ($_c > $url_piece_count) continue;
+            $pre_match = false;
+            for ($__i = 0; $__i < $_c; $__i++) {
+                $__kwd = isset($arr[$__i][0]) ? $arr[$__i] : '/';
+                if ($url_piece[$__i] != $__kwd) {
+                    $pre_match = false;
+                    break;
+                }
+                $pre_match = true;
+            }
+            $pre_match && $routes[$_c] = $_r;
+        }
+        krsort($routes);
+        foreach ($routes as $_r) {
+            if ($_r->match($url_info['uri'])) {
+                return $_r->exec();
+            }
+        }
+        throw new exceptions\http\NotFound('not configure for uri: [' . $url_info['uri'] . ']');        
     }
 
     protected function _filter_config($piece, $configure)
