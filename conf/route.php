@@ -23,7 +23,7 @@ class Route
             new C('/c/play',           '\\Metz\\app\\test'),
             new C('/c/play/m',          \Metz\app\test\A::class, 'z'),
             */
-            //new C('/',           '\\Metz\\app\\metz'),
+            (new C('/',           '\\Metz\\app\\metz'))->disable_controller(),
             // new R(RESTFUL_URI, ROUTE_CLASS, ROUTE_METHOD),
             // new C(COMMON_URI, ROUTE_CLASS, ROUTE_METHOD),
         ];

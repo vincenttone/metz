@@ -83,6 +83,12 @@ class Router
         $url_piece_count = count($url_piece);
         $routes = [];
         foreach ($this->_configure as $_r) {
+            if (!isset($url_piece[0])) {
+                if ($_r->get_uri() == '/') {
+                    $routes[0] = $_r;
+                }
+                continue;
+            }
             $arr = $_r->get_uri_array();
             $_c = count($arr);
             if ($_c > $url_piece_count) continue;

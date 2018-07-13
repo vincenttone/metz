@@ -49,7 +49,7 @@ class Router
 			return array('errno' => self::ERRNO_FORBIDDEN, 'data' => "permission denied.");
 		}
 		// get display format
-        $url_piece = explode('/', $request_uri);
+        $url_piece = empty($request_uri) ? [] : explode('/', $request_uri);
         $display = '';
         $file = '';
         if (isset($url_piece[0])) {
