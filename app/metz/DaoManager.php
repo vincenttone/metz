@@ -48,6 +48,21 @@ class DaoManager
         return $this;
     }
 
+    public function get($id = null)
+    {
+        $id && $this->filter($id);
+        $daos = $this->get_all();
+        if (empty($daos)) {
+            return null;
+        }
+        return reset($daos);
+    }
+
+    public function get_all()
+    {
+        
+    }
+
     public function from($dao_cls)
     {
         $this->_dao_cls = $dao_cls;
