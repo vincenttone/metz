@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\test\dao;
+namespace Metz\app\test\model\dao;
 
 use Metz\sys\Configure;
 use Metz\app\metz\Dao;

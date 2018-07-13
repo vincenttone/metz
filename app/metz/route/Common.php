@@ -8,6 +8,8 @@ class Common extends Route
     const DEFAULT_CLASS = 'Home';
     const DEFAULT_METHOD = 'index';
 
+    protected $_controller_path = 'controller';
+
     public function __construct($uri, $klass = null, $method = null)
     {
         parent::__construct($uri, $klass, $method);
@@ -35,6 +37,7 @@ class Common extends Route
                 $left_count == 0 && $left[] = self::DEFAULT_CLASS;
                 $method = array_pop($left);
                 $kls = '\\' . trim($this->_prefix, '\\');
+                $this->_controller_path && $kls .= $this->_controller_path . '\\';
                 isset($left[0]) && $kls .= '\\' . implode('\\', $left);
                 if (class_exists($kls)) {
                     $this->_klass = $kls;
@@ -59,6 +62,18 @@ class Common extends Route
     public function exec()
     {
         return call_user_func_array([new $this->_klass, $this->_method], $this->_args);
+    }
+
+    public function enable_controller($path = 'controller')
+    {
+        $this->_controller_path = $name;
+        return $this;
+    }
+
+    public function disable_controller()
+    {
+        $this->_controller_path = null;
+        return $this;
     }
 
     protected function _generate()

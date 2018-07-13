@@ -28,6 +28,9 @@ class Restful extends Route
         self::METHOD_UPDATE,
         self::METHOD_DELETE,
     ];
+    protected $_filter_callback = null;
+    protected $_match_success_hook = null;
+    protected $_controller_path = 'controller';
 
     public function __construct($uri, $klass = null, $method = null)
     {
@@ -63,6 +66,7 @@ class Restful extends Route
         ) {
             return false;
         }
+        $this->_match_success_hook && call_user_func($this->_match_success_hook, $this);
         return true;
     }
 
@@ -76,13 +80,13 @@ class Restful extends Route
         return isset($_REQUEST['_method']) ? $_REQUEST['_method'] : self::ACTION_GET;
     }
 
-    protected function _choose_method($action, $args = [])
+    protected function _choose_method($args = [])
     {
         $left_count = count($args);
         switch ($this->_get_action()) {
         case self::ACTION_GET:
             if ($left_count > 0) {
-                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($args[0]);
                 $this->_method || $this->_method = self::METHOD_GET;
             } else {
                 $this->_method || $this->_method = self::METHOD_INDEX;
@@ -93,30 +97,35 @@ class Restful extends Route
         case self::ACTION_PUT:
             $this->_method || $this->_method = self::METHOD_UPDATE;
             if ($left_count > 0) {
-                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($args[0]);
             } else {
                 throw new exceptions\db\unexpectedInput('put method without argument ' .  json_encode($args));
             }
         case self::ACTION_DELETE:
             $this->_method || $this->_method = self::METHOD_DELETE;
             if ($left_count > 0) {
-                $this->_args[] = filter_var($args[0], FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($args[0]);
             } else {
-                throw new exceptions\db\unexpectedInput('put method without argument ' .  json_encode($args));
+                throw new exceptions\db\unexpectedInput('delete method without argument ' .  json_encode($args));
             }
         }
     }
 
-    protected function _choose_method_without_class($action, $args)
+    protected function _choose_method_without_class($args)
     {
         $tail = array_pop($args);
         $kls = rtrim($this->_prefix, '\\');
+        if ($this->_controller_path) {
+            if (strpos($kls, $this->_controller_path, - strlen($this->_controller_path)) === false) {
+                $kls .= '\\' . $this->_controller_path;
+            }
+        }
         isset($args[0]) && $kls .= '\\' . implode('\\', $args);
         switch ($this->_get_action()) {
         case self::ACTION_GET:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($tail);
                 $this->_method = self::METHOD_GET;
             } else {
                 $kls .= '\\' . $tail;
@@ -134,15 +143,46 @@ class Restful extends Route
         case self::ACTION_PUT:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($tail);
                 $this->_method = self::METHOD_UPDATE;
             }
         case self::ACTION_DELETE:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
-                $this->_args[] = filter_var($tail, FILTER_SANITIZE_STRING);
+                $this->_args[] = $this->_filter_var($tail);
                 $this->_method = self::METHOD_DELETE;
             }
         }
+    }
+
+    public function set_filter_callback($callback)
+    {
+        $this->_filter_callback = $callback;
+        return $this;
+    }
+
+    public function enable_controller($path = 'controller')
+    {
+        $this->_controller_path = $name;
+        return $this;
+    }
+
+    public function disable_controller()
+    {
+        $this->_controller_path = null;
+        return $this;
+    }
+
+    public function set_match_success_hook($hook)
+    {
+        $this->_match_success_hook = $hook;
+        return $this;
+    }
+
+    protected function _filter_var($var, $callback = null)
+    {
+        return is_callable($this->_filter_callback)
+            ? call_user_func($this->_filter_callback, $var)
+            : filter_var($var, FILTER_SANITIZE_STRING);
     }
 }

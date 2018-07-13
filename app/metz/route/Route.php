@@ -38,6 +38,27 @@ abstract class Route
         return $this->_uri_array;
     }
 
+    public function get_class()
+    {
+        return $this->_klass;
+    }
+
+    public function get_method()
+    {
+        return $this->_method;
+    }
+
+    public function set_class($klass)
+    {
+        return $this->_set_class($klass);
+    }
+
+    public function set_method($method)
+    {
+        $this->_method = $method;
+        return $this;
+    }
+
     protected function _set_class($klass)
     {
         if ($klass === null || !class_exists($klass)) {

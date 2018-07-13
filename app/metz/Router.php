@@ -103,7 +103,7 @@ class Router
                 return $_r->exec();
             }
         }
-        throw new exceptions\http\NotFound('not configure for uri: [' . $url_info['uri'] . ']');        
+        throw new exceptions\http\NotFound('not configure for uri: [' . $url_info['uri'] . ']');
     }
 
     protected function _filter_config($piece, $configure)

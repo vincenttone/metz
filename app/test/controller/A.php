@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\test;
+namespace Metz\app\test\controller;
 
 class A
 {
@@ -31,16 +31,16 @@ class A
 
     function get($id)
     {
-        echo __METHOD__;
+        echo __METHOD__ . ' ' . $id;
     }
 
     function update($id)
     {
-        echo __METHOD__;
+        echo __METHOD__ . ' ' . $id;
     }
 
     function delete($id)
     {
-        echo __METHOD__;
+        echo __METHOD__ . ' ' . $id;
     }
 }
