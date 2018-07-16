@@ -6,7 +6,7 @@ use Metz\app\metz\configure\Driver;
 
 abstract class Dao implements \JsonSerializable, \ArrayAccess
 {
-    abstract protected function _get_table();
+    abstract protected function get_table();
 
     const DATA_VAL = 1;
     const DATA_STATUS = 2;
@@ -24,6 +24,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     const PROPERTY_STATUS_NOT_EXISTS = 4;
 
     protected $_conn = null;
+    protected $_id_field = null;
     protected $_id = null;
     protected $_data = [];
     protected $_status = self::PROPERTY_STATUS_INIT;
@@ -33,6 +34,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function __construct($id = null, $data = null)
     {
+        $this->_id_field = $this->get_table()->get_primary_key();
         $val && $this->_set_id($id);
         is_array($data) && $this->_unpack($data);
     }
@@ -44,9 +46,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function load()
     {
-        $primary_key = $this->get_primary_key();
-        $data = $this->_get_table()
-              ->get($this->_id);
+        $data = $this->get_table()->get($this->_id);
         $this->_unpack($data);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
@@ -67,14 +67,18 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function del()
     {
-        $del = $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->where([$primary_key => $this->_id])
-            ->delete();
-        $this->_update_data_status(self::DATA_STATUS_DELETED);
+        $del = $this->get_table()->delete([$this->_id_field => $this->_id]);
+        $this->_id = null;
         $this->_data = [];
+        $this->_update_data_status(self::DATA_STATUS_DELETED);
         $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
         return $del;
+    }
+
+    protected function _set_id($val)
+    {
+        $this->_id = $val;
+        return $this;
     }
 
     protected function _unpack($data)
@@ -83,10 +87,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
             return $this;
         }
-        $fields = $this->_get_table()->get_fields_info();
-        $primary_key = $this->get_primary_key();
+        $fields = $this->get_table()->get_fields_info();
         foreach ($fields as $_f => $_conf) {
-            if ($_f == $primary_key) {
+            if ($_f == $this->_id_field) {
                 continue;
             }
             if (array_key_exists($_f, $data)) {
@@ -110,35 +113,20 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     protected function _insert()
     {
-        $data = $this->_filter_data();
-        $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->insert($data);
+        $id = $this->get_table()->insert($this->_filter_data());
         $this->_status = self::PROPERTY_STATUS_SYNCED;
-        if (!isset($data[$this->get_primary_key()])
+        if (!isset($data[$this->_id_field])
             && $this->_id === null
         ) {
-            $this->_set_id(
-                $this->_get_connection()
-                ->last_insert_id()
-            );
+            $this->_set_id($id);
         }
-        return $this;
-    }
-
-    protected function _set_id($val)
-    {
-        $this->_id = $val;
-        $this->_data[$this->get_primary_key()] = $val;
         return $this;
     }
 
     protected function _upsert()
     {
         $data = $this->_filter_data();
-        $this->get_table()
-            ->get_connection()
-            ->upsert($data);
+        $this->get_table()->upsert($data);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
@@ -149,11 +137,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         if (empty($data)) {
             return 0;
         }
-        $this->_get_table()
-            ->get_connection()
-            ->update($data)
-            ->where([$this->$primary_key => $this->_id])
-            ->commit();
+        $this->get_table()->update($data, [$this->_id_key => $this->_id]);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
@@ -188,8 +172,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     protected function _get_fields()
     {
-        return $this->_get_table()
-            ->get_fields();
+        return $this->get_table()->get_fields();
     }
 
     protected function _enable_upsert()
@@ -213,19 +196,21 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
      */
     protected function _get_by_uniq_index($cond)
     {
-        $data = $this->_get_table()
-              ->get_connection()
-              ->where($cond)
-              ->select($this->_get_fields())
-              ->get();
-        $this->_unpack($data);
-        $this->_status = self::PROPERTY_STATUS_SYNCED;
+        $datas = $this->get_table()->get_by($cond);
+        if (isset($datas[f0])) {
+            $this->_unpack($datas[0]);
+            $this->_status = self::PROPERTY_STATUS_SYNCED;
+        } else {
+            $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
+        }
         return $this;
     }
 
     public function array_copy()
     {
-        return $this->_filter_data();
+        $data = $this->_filter_data();
+        $data[$this->_id_field] = $this->_id;
+        return $data;
     }
 
     public function jsonSerialize()
@@ -237,16 +222,15 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     {
         if ($this->_ext_methods === null) {
             $this->_ext_methods = [];
-            $fields = $this->_get_table()
-                    ->get_fields_info();
+            $fields = $this->get_table()->get_fields_info();
             if (!empty($fields)) {
                 foreach ($fields as $_f => $_i) {
                     $this->_ext_methods['set_' . $_f] = $_f;
                 }
             }
-            $primary_key = $this->get_primary_key();
+            $primary_key = $this->_id_field();
             $this->_ext_methods['get_by_' . $primary_key] = $primary_key;
-            $indexes = $this->get_indexes();
+            $indexes = $this->get_table()->get_indexes();
             if (isset($indexes[self::INDEX_TYPE_UNIQ])) {
                 foreach ($indexes[self::INDEX_TYPE_UNIQ] as $_i) {
                     $fname = is_array($_i)
@@ -326,12 +310,12 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     // array access
     public function offsetExists($offset)
     {
-        return $offset == $this->get_primary_key() || isset($this->_data[$offset]);
+        return $offset == $this->_id_field || isset($this->_data[$offset]);
     }
 
     public function offsetGet($offset)
     {
-        if ($offset == $this->get_primary_key()) {
+        if ($offset == $this->_id_field) {
             return $this->get_id();
         } elseif (isset($this->_data[$offset])) {
             return $this->_data[$offset];
@@ -341,7 +325,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function offsetSet($offset, $val)
     {
-        if ($offset == $this->get_primary_key()) {
+        if ($offset == $this->_id_field) {
             $this->_set_id($val);
         } else {
             $fields_info = $this->_get_table()->get_fields_info();
@@ -353,9 +337,10 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function offsetUnset($offset)
     {
-        if ($offset == $this->get_primary_key()) {
+        if ($offset == $this->_id_field) {
             $this->_set_id(null);
-        } elseif (isset($this->_data[$offset])) {
+        }
+        if (isset($this->_data[$offset])) {
             unset($this->_data[$offset]);
         }
     }

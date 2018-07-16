@@ -58,9 +58,15 @@ class DaoManager
         return reset($daos);
     }
 
-    public function get_all()
+    public function get_all($cond)
     {
-        
+        $data = $this->_get_dao_instance($this->_dao_cls)
+            ->get_table()
+            ->get_all($cond);
+        $daos = [];
+        foreach ($data as $_d) {
+            $daos = new 
+        }
     }
 
     public function from($dao_cls)

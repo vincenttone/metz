@@ -7,6 +7,12 @@ use Metz\app\metz\configure\Driver;
 
 abstract class Table
 {
+    abstract protected function _get_db_config();
+    abstract public function get_table_name();
+    abstract public function get_indexes();
+    abstract public function get_fields_info();
+    abstract public function get_related_table_info();
+
     const FIELD_TYPE_INT = 1;
     const FIELD_TYPE_FLOAT = 2;
     const FIELD_TYPE_DOUBLE = 7;
@@ -28,11 +34,24 @@ abstract class Table
 
     protected $_conn = null;
 
-    abstract protected function _get_db_config();
-    abstract public function get_table_name();
-    abstract public function get_indexes();
-    abstract public function get_fields_info();
-    abstract public function get_related_table_info();
+    protected static $_instance = null;
+
+    protected function __construct()
+    {
+    }
+
+    protected function __clone()
+    {
+    }
+
+    public function get_instance()
+    {
+        if (self::$_instance === null) {
+            $kls = get_class();
+            self::$_instance = new $kls();
+        }
+        return self::$_instance;
+    }
 
     public function get_primary_key()
     {
@@ -64,10 +83,60 @@ abstract class Table
 
     public function get($primary, $fields = null)
     {
-        return $this->get_connection()
+        return $this->connect_and_select()
             ->where([$this->get_primary_key() => $primary])
             ->select(empty($fields) ? $this->get_fields() : $fields)
             ->get();
+    }
+
+    public function get_by($cond, $fields = null)
+    {
+        return $this->connect_and_select()
+            ->where($cond)
+            ->select(empty($fields) ? $this->get_fields() : $fields)
+            ->get_all();
+    }
+
+    public function insert($data)
+    {
+        $data = $this->_filter_by_fields($data);
+        $this->connect_and_select()
+            ->insert($data);
+        return $this->_get_connection()->last_insert_id();
+    }
+
+    public function multi_insert()
+    {
+        $filtered = [];
+        foreach ($data as $_d) {
+            $filtered[] = $this->_filter_by_fields($_d);
+        }
+        return $this->connect_and_select()
+            ->insert($filtered);
+    }
+
+    public function upsert($data)
+    {
+        $data = $this->_filter_by_fields($data);
+        return $this->connect_and_select()
+            ->upsert($data);
+    }
+
+    public function update($data, $cond)
+    {
+        $data = $this->_filter_by_fields($data);
+        $cond = $this->_filter_by_fields($cond);
+        return $this->connect_and_select()
+            ->where($cond)
+            ->update($data);
+    }
+
+    public function delete($cond)
+    {
+        $cond = $this->_filter_by_fields($cond);
+        return $this->connect_and_select()
+            ->where($cond)
+            ->delete();
     }
 
     public function get_fields()
@@ -84,10 +153,21 @@ abstract class Table
             : null;
     }
 
-    public function get_connection()
+    public function connect_and_select()
     {
         return $this->_get_connection()
             ->set_table($this->get_table_name());
+    }
+
+    protected function _filter_by_fields($data)
+    {
+        $fields = $this->get_fields();
+        foreach ($data as $_f => $_d) {
+            if (!isset($fields[$_f])) {
+                unset($data[$_f]);
+            }
+        }
+        return $data;
     }
 
     protected function _get_connection()

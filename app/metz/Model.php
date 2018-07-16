@@ -11,17 +11,18 @@ abstract class Model extends \ArrayObject
 
     public function get($id)
     {
-        if (!$id) {
-            // do not get after save at master-slave db
-            $id = $this->_cur;
-        }
-        $daos = DaoManager::manager()
+        return DaoManager::manager()
               ->from($this->_get_binding_dao_class())
               ->filter($id)
               ->get();
-        if ($daos) {
-            $this->_daos[] = $daos->get_primary_val();
-        }
-        return null;
     }
+
+    public function get_by($cond, $sort = null, $page = 0, $count = 30)
+    {
+        return DaoManager::manager()
+              ->from($this->_get_binding_dao_class())
+              ->filter($id)
+              ->get_all();
+    }
+
 }
