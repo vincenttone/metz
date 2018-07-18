@@ -1,6 +1,8 @@
 <?php
 namespace Metz\app\metz;
 
+use Metz\app\metz\db\Table;
+
 class DaoManager
 {
     private static $_instance = null;
@@ -48,6 +50,23 @@ class DaoManager
         return $this;
     }
 
+    public function count($conds = null)
+    {
+        $table = $this->_get_dao_instance($this->_dao_cls)
+               ->get_table();
+        $conds && $table->where($conds);
+        if (!empty($this->_conds)) {
+            $table->where($this->_conds);
+            $this->_conds = [];
+        }
+        if (!empty($this->_in)) {
+            foreach ($this->_in as $_f => $_in) {
+                $table->in($_f, $_in);
+            }
+        }
+        return $table->count();
+    }
+
     public function get($id = null)
     {
         $id && $this->filter($id);
@@ -58,15 +77,51 @@ class DaoManager
         return reset($daos);
     }
 
-    public function get_all($cond)
+    public function get_all($conds = null)
     {
-        $data = $this->_get_dao_instance($this->_dao_cls)
-            ->get_table()
-            ->get_all($cond);
+        $table = $this->_get_dao_instance($this->_dao_cls)
+               ->get_table();
+        $conds && $table->where($conds);
+        if (!empty($this->_conds)) {
+            $table->where($this->_conds);
+            $this->_conds = [];
+        }
+        if (!empty($this->_in)) {
+            foreach ($this->_in as $_f => $_in) {
+                $table->in($_f, $_in);
+            }
+        }
+        $this->_from > 0 && $table->offset($this->_from);
+        $this->_to > 0 && $table->limit($this->_to - $this->_from);
+        $this->_sort && $table->sort($this->_sort);
+        $data = $table->get_all();
         $daos = [];
         foreach ($data as $_d) {
-            $daos = new 
+            $daos[] = new Dao($_d[], $_d);
         }
+        return $daos;
+    }
+
+    public function update($conds = null)
+    {
+        $table = $this->_get_table();
+        $conds && $table->where($conds);
+        if (!empty($this->_conds)) {
+            $table->where($this->_conds);
+            $this->_conds = [];
+        }
+        return $table->update();
+    }
+
+    public function delete($conds = null)
+    {
+        $table = $this->_get_table();
+        $conds && $table->where($conds);
+        if (!empty($this->_conds)) {
+            $table->where($this->_conds);
+            $this->_conds = [];
+        }
+        return $table->delete();
     }
 
     public function from($dao_cls)
@@ -101,10 +156,10 @@ class DaoManager
      * @param $per=30
      * @return $this
      */
-    public function paging($num, $per = 30)
+    public function paging($page, $per = 30)
     {
-        $this->_from = $per * ($num - 1);
-        $this->_to = $per * $num;
+        $this->_from = $per * ($page - 1);
+        $this->_to = $per * $page;
         return $this;
     }
     /**
@@ -187,5 +242,11 @@ class DaoManager
         $current_dao = $this->_get_dao_instance($current_cls);
         $target_dao = $this->_get_dao_instance($target_cls);
         return $target_dao->get_related_key($current_cls, $current_dao->get_primary_key());
+    }
+
+    protected function _get_table()
+    {
+        return $this->_get_dao_instance($this->_dao_cls)
+            ->get_table();
     }
 }
