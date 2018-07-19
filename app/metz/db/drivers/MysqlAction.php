@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
-use Metz\app\metz\exceptions\db;
+use Metz\app\metz\exceptions;
 
 class MysqlAction
 {
@@ -60,7 +60,12 @@ class MysqlAction
 
     public function update_type($type)
     {
-        if (($this->_type == self::TYPE_INSERT
+        if ($type === null) {
+            return $this;
+        }
+        if ($this->_type === null) {
+            $this->_type = $type;
+        } elseif (($this->_type == self::TYPE_INSERT
              && $type == self::TYPE_UPDATE)
             || ($this->_type == self::TYPE_UPDATE
              && $type == self::TYPE_INSERT)
@@ -69,15 +74,16 @@ class MysqlAction
                 $this->_status = self::STATUS_EXPECT_ON_CONFLICT;
             } elseif ($this->_status == self::STATUS_EXPECT_UPSERT) {
                 $this->_status = self::STATUS_NORMAL;
+                $this->_type = self::TYPE_UPSERT;
             } else {
-                throw exceptions\db\unexpectedInput([
+                throw new exceptions\db\UnexpectedInput([
                     'err' => 'unexpect action type',
                     'current' => $this->_type,
                     'new' => $type,
                 ]);
             }
         } else {
-            throw exceptions\db\unexpectedInput([
+            throw new exceptions\db\UnexpectedInput([
                 'err' => 'unexpect action type',
                 'current' => $this->_type,
                 'new' => $type,
@@ -136,7 +142,7 @@ class MysqlAction
         case self::TYPE_INSERT:
             $str = 'INSERT INTO ' . $this->_get_table();
             $fields_str = $this->_get_fields_str('');
-            empty($fields_str) || $str .= $fields_str;
+            empty($fields_str) || $str .=  ' (' . $fields_str . ') ';
             $str .= ' VALUES '. $this->_get_insert_str();
             break;
         case self::TYPE_UPDATE:
@@ -155,7 +161,7 @@ class MysqlAction
             $fields_str = $this->_get_fields_str('');
             empty($fields_str) || $str .= $fields_str;
             $str .= $this->_get_insert_str();
-            $str .= 'ON DUNPLICATE KEY UPDATE ' . $this->_get_update_str();
+            $str .= ' ON DUNPLICATE KEY UPDATE ' . $this->_get_update_str();
             break;
         }
         return [
@@ -174,6 +180,12 @@ class MysqlAction
     public function set_fields($fields)
     {
         $this->_info[self::INFO_KEY_FIELDS] = $fields;
+        return $this;
+    }
+
+    public function where($conds)
+    {
+        $this->_info[self::INFO_KEY_WHERE] = $conds;
         return $this;
     }
 
@@ -203,16 +215,22 @@ class MysqlAction
         return $this;
     }
 
+    public function sort($sort)
+    {
+        $this->_info[self::INFO_KEY_SORT] = $sort;
+        return $this;
+    }
+
     public function insert($data)
     {
         $first = reset($data);
-        if (is_array($frist)) {
+        if (is_array($first)) {
             isset($first[0]) || $this->set_fields(array_keys($first));
             $this->_info[self::INFO_KEY_INSERT] = empty($this->_info[self::INFO_KEY_INSERT])
                                                 ? $data
                                                 : array_merge($this->_info[self::INFO_KEY_INSERT], $data);
         } else {
-            isset($data[0])  || $this->_get_current_act()->set_fields(array_keys($data));
+            isset($data[0])  || $this->set_fields(array_keys($data));
             if (empty($this->_info[self::INFO_KEY_INSERT])) {
                 $this->_info[self::INFO_KEY_INSERT] = [$data];
             } else {
@@ -222,20 +240,11 @@ class MysqlAction
         return $this;
     }
 
-    public function update()
+    public function update($data)
     {
-        $first = reset($data);
-        if (is_array($frist)) {
-            $this->_info[self::INFO_KEY_UPDATE] = empty($this->_info[self::INFO_KEY_UPDATE])
-                                                ? $data
-                                                : array_merge($this->_info[self::INFO_KEY_UPDATE], $data);
-        } else {
-            if (empty($this->_info[self::INFO_KEY_UPDATE])) {
-                $this->_info[self::INFO_KEY_UPDATE] = [$data];
-            } else {
-                $this->_info[self::INFO_KEY_UPDATE][] = $data;
-            }
-        }
+        $this->_info[self::INFO_KEY_UPDATE] = empty($this->_info[self::INFO_KEY_UPDATE])
+                                            ? $data
+                                            : array_merge($this->_info[self::INFO_KEY_UPDATE], $data);
         return $this;
     }
 
@@ -245,52 +254,43 @@ class MysqlAction
         if (isset($this->_info[self::INFO_KEY_FIELDS])
             && count($this->_info[self::INFO_KEY_FIELDS]) > 0
         ) {
-            $count = count($this->_info[self::INFO_KEY_FIELDS]);
-        } else {
-            $count = 0;
-        }
-        if ($count > 0) {
-            $fields = implode(',', array_fill(0, $count, '? '));
-            $data = $this->_info[self::INFO_KEY_FIELDS];
-        } else {
-            $fields = $default;
-        }
-        if (isset($this->_info[self::INFO_KEY_COUNT])) {
-            if ($count == 1) {
-                $fields = ' count(?) ';
-                $data = $this->_info[self::INFO_KEY_FIELDS];
+            if (isset($this->_info[self::INFO_KEY_COUNT])) {
+                $fields = 'count(' . reset($this->_info[self::INFO_KEY_FIELDS]) . ')';
             } else {
+                $fields = implode(', ', $this->_info[self::INFO_KEY_FIELDS]);
+            }
+        } else {
+            if (isset($this->_info[self::INFO_KEY_COUNT])) {
                 $fields = ' count(' . $default . ') ';
-                $data = null;
+            } else {
+                $fields = $default;
             }
         }
-        $data == null && array_merge($this->_data, $data);
-        return $fields;
+        return ' ' . $fields . ' ';
     }
 
     protected function _get_table()
     {
-        $this->_data[] = $this->_info[self::INFO_KEY_TBL];
-        return ' ? ';
+        return ' `' . $this->_info[self::INFO_KEY_TBL] . '` ';
     }
 
     protected function _get_insert_str()
     {
-        if (isset($this->_info[self::INFO_KEY_INSERT][0])) {
+        if (isset($this->_info[self::INFO_KEY_INSERT][0]) && !empty($this->_info[self::INFO_KEY_INSERT][0])) {
             $str_arr = [];
             $data = [];
             $count = count($this->_info[self::INFO_KEY_INSERT][0]);
             foreach ($this->_info[self::INFO_KEY_INSERT] as $_d) {
                 if (count($_d) != $count) {
-                    throw exceptions\db\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
+                    throw new exceptions\db\UnexpectedInput('unexpect insert data: ' . json_encode($this->_info));
                 }
-                $data = array_merge($data, $_d);
+                $data = array_merge($data, array_values($_d));
                 $str_arr[] = '(' . implode(', ', array_fill(0, $count, '?')) . ')';
             }
             $this->_data = array_merge($this->_data, $data);
             return implode(', ', $str_arr);
         } else {
-            throw exceptions\db\unexpectedInput('unexpect insert data: ' . json_encode($this->_info));
+            throw new exceptions\db\UnexpectedInput('unexpect insert data: ' . json_encode($this->_info));
         }
     }
 
@@ -300,12 +300,12 @@ class MysqlAction
         if (isset($this->_info[self::INFO_KEY_UPDATE])) {
             $strs = [];
             foreach ($this->_info[self::INFO_KEY_UPDATE] as $_k => $_v) {
-                $strs[] = strval($_k) . ' = ?';
+                $strs[] = ' `' . strval($_k) . '` = ? ';
                 $this->_data[] = $_v;
             }
             return implode(', ', $strs);
         } else {
-            throw exceptions\db\unexpectedInput('unexpect update data: ' . json_encode($this->_info));
+            throw new exceptions\db\UnexpectedInput('unexpect update data: ' . json_encode($this->_info));
         }
     }
 
@@ -340,7 +340,7 @@ class MysqlAction
                 }
             } else {
                 $str_arr[] = $_k . ' = ' . ' ?';
-                $data[] = $_v[1];
+                $data[] = $_v;
             }
         }
         if (empty($str_arr)) {
@@ -354,17 +354,22 @@ class MysqlAction
 
     protected function _get_sort_str()
     {
-        $str = ' ORDER BY ';
-        $arr = [];
-        foreach ($this->_info[self::INFO_KEY_SORT] as $_f => $_d) {
-            $arr[] = $_f . ' ' . $_v;
+        if (isset($this->_info[self::INFO_KEY_SORT])
+            && is_array($this->_info[self::INFO_KEY_SORT])
+        ) {
+            $str = ' ORDER BY ';
+            $arr = [];
+            foreach ($this->_info[self::INFO_KEY_SORT] as $_f => $_d) {
+                $arr[] = $_f . ' ' . $_v;
+            }
+            if (empty($arr)) {
+                $str = '';
+            } else {
+                $str .= implode(', ', $arr);
+            }
+            return $str;
         }
-        if (empty($arr)) {
-            $str = '';
-        } else {
-            $str .= implode(', ', $arr);
-        }
-        return $str;
+        return '';
     }
 
     protected function _get_offset_str()

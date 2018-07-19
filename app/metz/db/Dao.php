@@ -1,19 +1,11 @@
 <?php
-namespace Metz\app\metz;
+namespace Metz\app\metz\db;
 use Metz\sys\Log;
 use Metz\app\metz\exceptions;
 use Metz\app\metz\configure\Driver;
 
-abstract class Dao implements \JsonSerializable, \ArrayAccess
+class Dao implements \JsonSerializable, \ArrayAccess
 {
-    public abstract function get_indexes();
-    
-    protected abstract function _get_db_config();
-    protected abstract function _get_table_name();
-    protected abstract function _get_fields_info();
-    // relations
-    protected abstract function _get_related_table_info();
-
     const DATA_VAL = 1;
     const DATA_STATUS = 2;
 
@@ -29,69 +21,51 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     const PROPERTY_STATUS_SYNCED = 3;
     const PROPERTY_STATUS_NOT_EXISTS = 4;
 
-    const INDEX_TYPE_PRIMARY = 1;
-    const INDEX_TYPE_UNIQ = 2;
-    const INDEX_TYPE_COMMON = 3;
-
-    const FIELD_INFO_TYPE = 'type';
-    const FIELD_INFO_AUTO_INCREMENT = 'ai';
-    const FIELD_INFO_NULLABLE = 'nullable';
-    const FIELD_INFO_DEFAULT = 'default';
-    const FIELD_INFO_LENGTH = 'length';
-    const FIELD_INFO_UNSIGNED = 'unsigned';
-
-    const FIELD_TYPE_INT = 1;
-    const FIELD_TYPE_FLOAT = 2;
-    const FIELD_TYPE_DOUBLE = 7;
-    const FIELD_TYPE_CHAR = 8;
-    const FIELD_TYPE_VARCHAR = 9;
-    const FIELD_TYPE_TEXT = 10;
-    const FIELD_TYPE_DATE = 11;
-    const FIELD_TYPE_TIME = 12;
-    const FIELD_TYPE_DATETIME = 13;
-    const FIELD_TYPE_TIMESTAMP = 14;
-    const FIELD_TYPE_BOOL = 15;
-
+    protected $_table = null;
     protected $_conn = null;
-    protected $_primary_val = null;
+    protected $_id = null;
     protected $_data = [];
     protected $_status = self::PROPERTY_STATUS_INIT;
 
     // methods
     protected $_ext_methods = null;
 
-    public function __construct($val = null)
+    public function __construct($table, $id = null, $data = null)
     {
-        $val && $this->_set_primary_val($val);
+        $this->_table = $table;
+        $id && $this->_set_id($id);
+        is_array($data) && $this->_fill($data);
+    }
+
+    public function get_id()
+    {
+        return $this->_id;
+    }
+
+    public function get_table()
+    {
+        return $this->_table;
     }
 
     public function get_primary_key()
     {
-        $indexes = $this->get_indexes();
-        return $indexes[self::INDEX_TYPE_PRIMARY];
-    }
-
-    public function get_primary_val()
-    {
-        return $this->_primary_val;
+        return $this->get_table()->get_primary_key();
     }
 
     public function load()
     {
-        $primary_key = $this->get_primary_key();
-        $data = $this->_get_connection()
-              ->set_table($this->_get_table_name())
-              ->where([$primary_key => $this->_primary_val])
-              ->select($this->get_fields())
+        $data = $this->get_table()
+              ->connect_and_select()
+              ->where([$this->get_primary_key() => $this->get_id()])
               ->get();
-        $this->_package($data);
+        $this->_fill($data);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
     }
 
     public function save()
     {
-        if ($this->_primary_val) {
+        if ($this->_id) {
             $this->_update();
         } elseif ($this->_enable_upsert()) {
             $this->_upsert();
@@ -102,63 +76,79 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         return $this;
     }
 
-    public function del()
+    public function delete()
     {
-        $del = $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->where([$primary_key => $this->_primary_val])
-            ->delete();
-        $this->_update_data_status(self::DATA_STATUS_DELETED);
+        $del = $this->get_table()->delete($this->get_id());
+        $this->_id = null;
         $this->_data = [];
+        $this->_update_data_status(self::DATA_STATUS_DELETED);
         $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
         return $del;
     }
 
-    public function get_related_key($dao_cls, $key)
+    protected function _insert()
     {
-        $info = $this->_get_related_table_info();
-        return isset($info[$dao_cls][$key])
-            ? $info[$dao_cls][$key]
-            : null;
-    }
-
-    public function get_fields()
-    {
-        $fields_info = $this->_get_fields_info();
-        return array_keys($fields_info);
-    }
-
-    public function generate_table()
-    {
-        $this->_get_connection()->set_monitor(
-            function ($str) {
-                Log::info("[DB execute info]\t" . $str);
-            }
-        );
-        $create_table = $this->_get_connection()
-            ->create_table(
-                $this->_get_table_name(),
-                $this->_get_fields_info(),
-                $this->get_primary_key()
-            );
-        $create_indexes = $this->_get_connection()
-            ->create_indexes(
-                $this->_get_table_name(),
-                $this->get_indexes()
-            );
+        $id = $this->get_table()->insert($this->_filter_data());
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
+        if (!isset($data[$this->table()->get_primary_key()])
+            && $this->_id === null
+        ) {
+            $this->_set_id($id);
+        }
         return $this;
     }
 
-    protected function _package($data)
+    protected function _upsert()
+    {
+        $data = $this->_filter_data();
+        $this->get_table()->upsert($data);
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
+        return $this;
+    }
+
+    protected function _update()
+    {
+        $data = $this->_filter_data([self::DATA_STATUS_MODIFIED, self::DATA_STATUS_ASSIGNED]);
+        if (empty($data)) {
+            return 0;
+        }
+        $this->get_table()->update($data, $this->get_id());
+        $this->_status = self::PROPERTY_STATUS_SYNCED;
+        return $this;
+    }
+
+    /**
+     * @desc select by uniq indexes
+     * @param $cond
+     * @return $this
+     */
+    protected function _get_by_uniq_index($cond)
+    {
+        $datas = $this->get_table()->get_by($cond);
+        if (isset($datas[0])) {
+            $this->_fill($datas[0]);
+            $this->_status = self::PROPERTY_STATUS_SYNCED;
+        } else {
+            $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
+        }
+        return $this;
+    }
+
+    protected function _set_id($val)
+    {
+        $this->_id = $val;
+        return $this;
+    }
+
+    protected function _fill($data)
     {
         if (empty($data)) {
             $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
             return $this;
         }
-        $fields = $this->_get_fields_info();
-        $primary_key = $this->get_primary_key();
+        $fields = $this->get_table()->get_fields_info();
         foreach ($fields as $_f => $_conf) {
-            if ($_f == $primary_key) {
+            if ($_f == $this->get_primary_key()) {
                 continue;
             }
             if (array_key_exists($_f, $data)) {
@@ -180,56 +170,6 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         return $this;
     }
 
-    protected function _insert()
-    {
-        $data = $this->_filter_data();
-        $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->insert($data);
-        $this->_status = self::PROPERTY_STATUS_SYNCED;
-        if (!isset($data[$this->get_primary_key()])
-            && $this->_primary_val === null
-        ) {
-            $this->_set_primary_val(
-                $this->_get_connection()
-                ->last_insert_id()
-            );
-        }
-        return $this;
-    }
-
-    protected function _set_primary_val($val)
-    {
-        $this->_primary_val = $val;
-        $this->_data[$this->get_primary_key()] = $val;
-        return $this;
-    }
-
-    protected function _upsert()
-    {
-        $data = $this->_filter_data();
-        $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->upsert($data);
-        $this->_status = self::PROPERTY_STATUS_SYNCED;
-        return $this;
-    }
-
-    protected function _update()
-    {
-        $data = $this->_filter_data([self::DATA_STATUS_MODIFIED, self::DATA_STATUS_ASSIGNED]);
-        if (empty($data)) {
-            return 0;
-        }
-        $this->_get_connection()
-            ->set_table($this->_get_table_name())
-            ->update($data)
-            ->where([$this->$primary_key => $this->_primary_val])
-            ->commit();
-        $this->_status = self::PROPERTY_STATUS_SYNCED;
-        return $this;
-    }
-
     protected function _update_data_status($status)
     {
         foreach ($this->_data as $_f => $_d) {
@@ -242,7 +182,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     protected function _filter_data($status_array = [])
     {
         $data = [];
-        $fields = $this->_get_fields_info();
+        $fields = $this->get_table()->get_fields_info();
         foreach ($fields as $_f => $_conf) {
             if (!empty($status_array)
                 && (!isset($this->_data[_f][self::DATA_STATUS])
@@ -251,11 +191,16 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             ) {
                     continue;
             }
-            if (isset($this->_data[_f][self::DATA_VAL])) {
-                $data[$_f] = $this->_data[_f][self::DATA_VAL];
+            if (isset($this->_data[$_f][self::DATA_VAL])) {
+                $data[$_f] = $this->_data[$_f][self::DATA_VAL];
             }
         }
         return $data;
+    }
+
+    protected function _get_fields()
+    {
+        return $this->get_table()->get_fields();
     }
 
     protected function _enable_upsert()
@@ -272,58 +217,18 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         return [];
     }
     */
-    protected function _get_connection()
-    {
-        $conf = $this->_get_db_config();
-        if (!isset($conf['ip'])
-            || !isset($conf['port'])
-        ) {
-            throw new exceptions\db\UnexpectedInput('unexpect db configure: ' . json_encode($conf));
-        }
-        $driver = isset($conf['driver']) ? $conf['driver'] : Driver::MYSQL;
-        $ext = isset($conf['ext']) ? $conf['ext'] : [];
-        $db_name = $conf['db'];
-        if ($this->_conn) {
-            try {
-                $this->_conn->select_db($db_name);
-            } catch (exceptions\db\Db $ex) {
-                Log::warning($ex);
-                $this->_conn = null;
-            }
-        }
-        if ($this->_conn === null) {
-            $this->_conn = Dba::connection(
-                $driver,
-                $conf['ip'],
-                $conf['port'],
-                $conf['user'] ?? 'root',
-                $conf['password'] ?? '',
-                $db_name,
-                $ext
-            );
-        }
-        return $this->_conn;
-    }
-    /**
-     * @desc select by uniq indexes
-     * @param $cond
-     * @return $this
-     */
-    protected function _get_by_uniq_index($cond)
-    {
-        $data = $this->_get_connection()
-              ->set_table($this->_get_table_name())
-              ->where($cond)
-              ->select($this->get_fields())
-              ->get();
-        $this->_package($data);
-        $this->_status = self::PROPERTY_STATUS_SYNCED;
-        return $this;
-    }
-
     public function array_copy()
     {
-        return $this->_filter_data();
+        if ($this->get_id() === null
+            || $this->_status == self::PROPERTY_STATUS_NOT_EXISTS
+        ) {
+            return '';
+        } elseif (empty($this->_data)) {
+            $this->load();
+        }
+        $data = $this->_filter_data();
+        $data[$this->get_primary_key()] = $this->_id;
+        return $data;
     }
 
     public function jsonSerialize()
@@ -335,7 +240,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     {
         if ($this->_ext_methods === null) {
             $this->_ext_methods = [];
-            $fields = $this->_get_fields_info();
+            $fields = $this->get_table()->get_fields_info();
             if (!empty($fields)) {
                 foreach ($fields as $_f => $_i) {
                     $this->_ext_methods['set_' . $_f] = $_f;
@@ -343,7 +248,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
             }
             $primary_key = $this->get_primary_key();
             $this->_ext_methods['get_by_' . $primary_key] = $primary_key;
-            $indexes = $this->get_indexes();
+            $indexes = $this->get_table()->get_indexes();
             if (isset($indexes[self::INDEX_TYPE_UNIQ])) {
                 foreach ($indexes[self::INDEX_TYPE_UNIQ] as $_i) {
                     $fname = is_array($_i)
@@ -384,7 +289,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     public function __set($field, $val)
     {
-        $fields = $this->_get_fields_info();
+        $fields = $this->get_table()->get_fields_info();
         if (isset($fields[$field])) {
             if (isset($this->_data[$field])
                 && isset($this->_data[$field][self::DATA_STATUS])
@@ -411,7 +316,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         if ($this->_status == self::PROPERTY_STATUS_NOT_EXISTS) {
             return null;
         }
-        if (empty($this->_data) && $this->_primary_val) {
+        if (empty($this->_data) && $this->_id) {
             $this->load();
         }
         if (isset($this->_data[$field][self::DATA_VAL])) {
@@ -429,7 +334,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     public function offsetGet($offset)
     {
         if ($offset == $this->get_primary_key()) {
-            return $this->get_primary_val();
+            return $this->get_id();
         } elseif (isset($this->_data[$offset])) {
             return $this->_data[$offset];
         }
@@ -439,9 +344,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     public function offsetSet($offset, $val)
     {
         if ($offset == $this->get_primary_key()) {
-            $this->_set_primary_val($val);
+            $this->_set_id($val);
         } else {
-            $fields_info = $this->_get_fields_info();
+            $fields_info = $this->_get_table()->get_fields_info();
             if (isset($fields_info[$offset])) {
                 $this->_data[$offset] = $val;
             }
@@ -451,8 +356,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     public function offsetUnset($offset)
     {
         if ($offset == $this->get_primary_key()) {
-            $this->_set_primary_val(null);
-        } elseif (isset($this->_data[$offset])) {
+            $this->_set_id(null);
+        }
+        if (isset($this->_data[$offset])) {
             unset($this->_data[$offset]);
         }
     }

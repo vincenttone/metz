@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\metz\db\drivers;
 
-use Metz\app\metz\Dao;
+use Metz\app\metz\db\Table;
 use Metz\app\metz\exceptions;
 
 class Mysql implements Driver
@@ -12,11 +12,6 @@ class Mysql implements Driver
     protected $_monitor = null;
 
     protected $_acts = null;
-
-    const ACT_FLAG_WAITING = 1;
-    const ACT_FLAG_LOADING = 2;
-    const ACT_FLAG_SEEKING_UPSERT = 3;
-    const ACT_FLAG_SEEKING_CONFLICT = 4;
 
     public function connect($ip, $port, $user = null, $password = null, $db = null, $ext = [])
     {
@@ -64,28 +59,28 @@ class Mysql implements Driver
 
     public function select($fields = null)
     {
-        $this->_add_act(self::ACT_QUERY);
+        $this->_add_act(MysqlAction::TYPE_QUERY);
         $this->_get_current_act()->set_fields($fields);
         return $this;
     }
 
     public function insert($data)
     {
-        $this->_add_act(self::ACT_INSERT);
+        $this->_add_act(MysqlAction::TYPE_INSERT);
         $this->_get_current_act()->insert($data);
         return $this;
     }
 
     public function update($data)
     {
-        $this->_add_act(self::ACT_UPDATE);
+        $this->_add_act(MysqlAction::TYPE_UPDATE);
         $this->_get_current_act()->update($data);
         return $this;
     }
 
-    public function del()
+    public function delete()
     {
-        return $this->_add_act(self::ACT_DELETE);
+        return $this->_add_act(MysqlAction::TYPE_DELETE);
     }
 
     public function count($fields = null)
@@ -130,7 +125,7 @@ class Mysql implements Driver
         return $this;
     }
 
-    public function on_conflict($keys)
+    public function on_conflict($keys = null)
     {
         $this->_get_current_act()->add_info(MysqlAction::INFO_KEY_ON_CONFLICT, $keys);
         return $this;
@@ -138,18 +133,17 @@ class Mysql implements Driver
 
     public function get()
     {
-        $exec_info = $this->_acts->get_exec_info();
-        $sth = $this->_conn->prepare($exec_info['prepare_str']);
-        $ret = $sth->execute($exec_info['data']);
-        return $sth->fetch();
+        $result = $this->get_all();
+        if (is_array($result) && isset($result[0])) {
+            return $result[0];
+        }
+        return null;
     }
 
     public function get_all()
     {
-        $exec_info = $this->_acts->get_exec_info();
-        $sth = $this->_conn->prepare($exec_info['prepare_str']);
-        $ret = $sth->execute($exec_info['data']);
-        return $sth->fetchAll();
+        $this->_add_act(MysqlAction::TYPE_SELECT);
+        return $this->exec();
     }
 
     public function exec()
@@ -157,19 +151,18 @@ class Mysql implements Driver
         if (is_array($this->_acts)) { // transaction, not support now
         } else {
             $exec_info = $this->_acts->get_exec_info();
-            $sth = $this->_conn->prepare($exec_info['prepare_str']);
-            $ret = $sth->execute($exec_info['data']);
+            $ret = $this->_prepare_and_run($exec_info['prepare_str'], $exec_info['data']);
             if ($ret) {
                 switch ($exec_info['type']) {
                 case MysqlAction::TYPE_INSERT:
-                case MysqlAction::TYPE_UPDATE:
-                    return $this->_conn->getLastInsertId();
+                    return $this->_conn->LastInsertId();
                 case MysqlAction::TYPE_SELECT:
-                    return $this->_conn->fetchAl();
+                    return $ret->fetchAll();
+                case MysqlAction::TYPE_UPSERT:
                 case MysqlAction::TYPE_UPDATE:
                 case MysqlAction::TYPE_DELETE:
                 default:
-                    return $sth->rowCount();
+                    return $ret->rowCount();
                 }
             } else {
                 throw new exceptions\db\ExecuteFailed(json_encode($sth->errorInfo()));
@@ -183,107 +176,108 @@ class Mysql implements Driver
         $sql = 'CREATE TABLE IF NOT EXISTS `' . $table_name . '` (';
         foreach ($fields_info as $_f => $_i) {
             $sql .= $_f . ' ';
-            switch($_i[Dao::FIELD_INFO_TYPE]) {
-            case Dao::FIELD_TYPE_BOOL:
+            switch($_i[Table::FIELD_INFO_TYPE]) {
+            case Table::FIELD_TYPE_BOOL:
                 $sql .= 'tinyint(1) ';
                 break;
-            case Dao::FIELD_TYPE_INT:
-                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
-                    if ($_i[Dao::FIELD_INFO_LENGTH] < 4) {
-                        $sql .= 'tinyint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
-                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 6) {
-                        $sql .= 'smallint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
-                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 12) {
-                        $sql .= 'int(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+            case Table::FIELD_TYPE_INT:
+                if (isset($_i[Table::FIELD_INFO_LENGTH])) {
+                    if ($_i[Table::FIELD_INFO_LENGTH] < 4) {
+                        $sql .= 'tinyint(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Table::FIELD_INFO_LENGTH] < 6) {
+                        $sql .= 'smallint(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Table::FIELD_INFO_LENGTH] < 12) {
+                        $sql .= 'int(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                     } else {
-                        $sql .= 'bigint(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'bigint(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                     }
                 } else {
                     $sql .= 'int';
                 }
-                isset($_i[Dao::FIELD_INFO_UNSIGNED])
-                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                isset($_i[Table::FIELD_INFO_UNSIGNED])
+                    && $_i[Table::FIELD_INFO_UNSIGNED]
                     && $sql .= ' unsigned ';
                 break;
-            case Dao::FIELD_TYPE_FLOAT:
+            case Table::FIELD_TYPE_FLOAT:
                 $sql .= 'float';
-                if (isset($_i[Dao::FIELD_INFO_LENGTH][1])) {
-                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH][1] . ', ' . $_i[Dao::FIELD_INFO_LENGTH][1] . ') ';
+                if (isset($_i[Table::FIELD_INFO_LENGTH][1])) {
+                    $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH][1] . ', ' . $_i[Table::FIELD_INFO_LENGTH][1] . ') ';
                 }
-                isset($_i[Dao::FIELD_INFO_UNSIGNED])
-                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                isset($_i[Table::FIELD_INFO_UNSIGNED])
+                    && $_i[Table::FIELD_INFO_UNSIGNED]
                     && $sql .= ' unsigned ';
                 break;
-            case Dao::FIELD_TYPE_DOUBLE:
+            case Table::FIELD_TYPE_DOUBLE:
                 $sql .= 'double';
-                if (isset($_i[Dao::FIELD_INFO_LENGTH][1])) {
-                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH][1] . ', ' . $_i[Dao::FIELD_INFO_LENGTH][1] . ') ';
+                if (isset($_i[Table::FIELD_INFO_LENGTH][1])) {
+                    $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH][1] . ', ' . $_i[Table::FIELD_INFO_LENGTH][1] . ') ';
                 }
-                isset($_i[Dao::FIELD_INFO_UNSIGNED])
-                    && $_i[Dao::FIELD_INFO_UNSIGNED]
+                isset($_i[Table::FIELD_INFO_UNSIGNED])
+                    && $_i[Table::FIELD_INFO_UNSIGNED]
                     && $sql .= ' unsigned ';
                 break;
             case dao::FIELD_TYPE_CHAR:
                 $sql .= 'char';
-                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
-                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                if (isset($_i[Table::FIELD_INFO_LENGTH])) {
+                    $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                 }
                 break;
             case dao::FIELD_TYPE_VARCHAR:
                 $sql .= 'varchar';
-                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
-                    $sql .= '(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                if (isset($_i[Table::FIELD_INFO_LENGTH])) {
+                    $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                 }
                 break;
-            case Dao::FIELD_TYPE_TEXT:
-                if (isset($_i[Dao::FIELD_INFO_LENGTH])) {
-                    if ($_i[Dao::FIELD_INFO_LENGTH] < 256) {
-                        $sql .= 'tinytext(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
-                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 65536) {
-                        $sql .= 'text(' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
-                    } elseif ($_i[Dao::FIELD_INFO_LENGTH] < 16777216) {
-                        $sql .= 'mediumtext (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+            case Table::FIELD_TYPE_TEXT:
+                if (isset($_i[Table::FIELD_INFO_LENGTH])) {
+                    if ($_i[Table::FIELD_INFO_LENGTH] < 256) {
+                        $sql .= 'tinytext(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Table::FIELD_INFO_LENGTH] < 65536) {
+                        $sql .= 'text(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
+                    } elseif ($_i[Table::FIELD_INFO_LENGTH] < 16777216) {
+                        $sql .= 'mediumtext (' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                     } else {
-                        $sql .= 'longtext (' . $_i[Dao::FIELD_INFO_LENGTH] . ') ';
+                        $sql .= 'longtext (' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                     }
                 } else {
                     $sql .= 'text ';
                 }
                 break;
-            case Dao::FIELD_TYPE_DATE:
+            case Table::FIELD_TYPE_DATE:
                 $sql .= 'date ';
                 break;
-            case Dao::FIELD_TYPE_TIME:
+            case Table::FIELD_TYPE_TIME:
                 $sql .= 'time ';
                 break;
-            case Dao::FIELD_TYPE_DATETIME:
+            case Table::FIELD_TYPE_DATETIME:
                 $sql .= 'datetime ';
                 break;
-            case Dao::FIELD_TYPE_TIMESTAMP:
+            case Table::FIELD_TYPE_TIMESTAMP:
                 $sql .= 'timestamp ';
                 break;
             }
-            isset($_i[Dao::FIELD_INFO_AUTO_INCREMENT])
+            isset($_i[Table::FIELD_INFO_AUTO_INCREMENT])
                 && $sql .= ' AUTO_INCREMENT ';
-            isset($_i[Dao::FIELD_INFO_NULLABLE])
-                && $_i[Dao::FIELD_INFO_NULLABLE] === false
+            isset($_i[Table::FIELD_INFO_NULLABLE])
+                && $_i[Table::FIELD_INFO_NULLABLE] === false
                 && $sql .= ' NOT NULL ';
-            if (isset($_i[Dao::FIELD_INFO_DEFAULT])) {
+            if (isset($_i[Table::FIELD_INFO_DEFAULT])) {
                 $sql .= ' DEFAULT ? ';
-                $data[] = $_i[Dao::FIELD_INFO_DEFAULT];
+                $data[] = $_i[Table::FIELD_INFO_DEFAULT];
             }
             $sql .= ',';
         }
         $sql .= ' PRIMARY KEY (' . $primary_key;
         $sql .= ')) ENGINE = ' . $this->_engine
              . ' DEFAULT CHARSET = ' . $this->_charset;
-        return $this->_prepare_and_run($sql, $data);
+        $this->_prepare_and_run($sql, $data);
+        return true;
     }
 
     public function create_indexes($table, $indexes)
     {
-        if (isset($indexes[Dao::INDEX_TYPE_COMMON][0])) {
-            foreach ($indexes[Dao::INDEX_TYPE_COMMON] as $_i) {
+        if (isset($indexes[Table::INDEX_TYPE_COMMON][0])) {
+            foreach ($indexes[Table::INDEX_TYPE_COMMON] as $_i) {
                 $idx = is_array($_i) ? 'idx_' . implode('_', $_i) : 'idx_' .$_i;
                 $sql = 'CREATE INDEX ' . $idx;
                 $sql .= ' ON ' . $table;
@@ -291,8 +285,8 @@ class Mysql implements Driver
                 $this->_prepare_and_run($sql, []);
             }
         }
-        if (isset($indexes[Dao::INDEX_TYPE_UNIQ][0])) {
-            foreach ($indexes[Dao::INDEX_TYPE_UNIQ] as $_i) {
+        if (isset($indexes[Table::INDEX_TYPE_UNIQ][0])) {
+            foreach ($indexes[Table::INDEX_TYPE_UNIQ] as $_i) {
                 $idx = is_array($_i) ? 'idx_' . implode('_', $_i) : 'idx_' .$_i;
                 $sql = 'CREATE UNIQUE INDEX ' . $idx;
                 $sql .= ' ON ' . $table;
@@ -306,27 +300,29 @@ class Mysql implements Driver
     {
         $sth= $this->_conn->prepare($prepare_str);
         $exec = $sth->execute($arr);
+        $str = $exec === false ? 'Execute sql failed: ' : 'Execute sql success: ';
+        $str .= $sth->queryString;
+        empty($arr) || $str .= ', data: ' . json_encode($arr);
+        $this->_monitor($str);
         if ($exec === false) {
             throw new exceptions\db\ExecuteFailed(
                 'Execute failed, sql: ' . $sth->queryString
                 . ', error info: ' . json_encode($sth->errorInfo())
             );
         }
-        $str = 'Execute sql success: ' . $sth->queryString;
-        empty($arr) || $str .= ', data: ' . json_encode($arr);
-        $this->_monitor($str);
-        return true;
+        return $sth;
     }
 
     protected function _monitor($str)
     {
-        $this->_monitor
-            && is_callable($this->_monitor)
-            && call_user_func($this->_monitor, $str);
+        $this->_monitor === null
+                        || (is_callable($this->_monitor)
+                            && call_user_func($this->_monitor, $str));
     }
 
     protected function _get_current_act()
     {
+        $this->_add_act();
         return $this->_acts;
     }
 
@@ -336,9 +332,9 @@ class Mysql implements Driver
         return $this;
     }
 
-    protected function _add_act($act)
+    protected function _add_act($act = null)
     {
-        if ($this->_flag == self::ACT_FLAG_WAITING) {
+        if ($this->_acts === null) {
             $this->_acts = new MysqlAction($act);
         } else {
             $this->_acts->update_type($act);
