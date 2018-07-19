@@ -327,6 +327,7 @@ class Mysql implements Driver
 
     protected function _get_current_act()
     {
+        $this->_add_act();
         return $this->_acts;
     }
 
@@ -336,10 +337,10 @@ class Mysql implements Driver
         return $this;
     }
 
-    protected function _add_act($act)
+    protected function _add_act($act = null)
     {
-        if ($this->_flag == self::ACT_FLAG_WAITING) {
-            $this->_acts = new MysqlAction($act);
+        if ($act === null) {
+            $this->_acts = new MysqlAction();
         } else {
             $this->_acts->update_type($act);
         }

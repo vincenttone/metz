@@ -177,6 +177,12 @@ class MysqlAction
         return $this;
     }
 
+    public function where($conds)
+    {
+        $this->_info[self::INFO_KEY_WHERE] = $conds;
+        return $this;
+    }
+
     public function count($fields = null)
     {
         $fields && $this->set_fields($fields);
@@ -200,6 +206,12 @@ class MysqlAction
     public function offset($count)
     {
         $count && $this->_info[self::INFO_KEY_OFFSET] = $count;
+        return $this;
+    }
+
+    public function sort($sort)
+    {
+        $this->_info[self::INFO_KEY_SORT] = $sort;
         return $this;
     }
 

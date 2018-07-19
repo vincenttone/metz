@@ -1,11 +1,16 @@
 <?php
-namespace Metz\app\test\model\dao;
+namespace Metz\app\test\model\table;
 
 use Metz\sys\Configure;
-use Metz\app\metz\Dao;
+use Metz\app\metz\db\Table;
 
-class Test extends Dao
+class Test extends Table
 {
+    protected function _get_db_config()
+    {
+        return Configure::config('db/test/votia');
+    }
+
     public function get_indexes()
     {
         return [
@@ -22,22 +27,17 @@ class Test extends Dao
         ];
     }
 
-    protected function _get_table_name()
+    public function get_table_name()
     {
         return 'testing';
     }
 
-    protected function _get_db_config()
-    {
-        return Configure::config('db/test/votia');
-    }
-
-    protected function _get_related_table_info()
+    public function get_related_table_info()
     {
         return [];
     }
 
-    protected function _get_fields_info()
+    public function get_fields_info()
     {
         return [
             'id' => [

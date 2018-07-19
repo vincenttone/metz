@@ -1,6 +1,8 @@
 <?php
 namespace Metz\app\test\controller;
 
+use Metz\app\test\model\T1;
+
 class A
 {
     public function __construct()
@@ -27,6 +29,8 @@ class A
     function index()
     {
         echo __METHOD__;
+        $t1 = new T1();
+        print_r($t1->get_all());
     }
 
     function get($id)

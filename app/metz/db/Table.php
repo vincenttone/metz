@@ -46,10 +46,10 @@ abstract class Table
     {
     }
 
-    public function get_instance()
+    public static function get_instance()
     {
         if (self::$_instance === null) {
-            $kls = get_class();
+            $kls = get_called_class();
             self::$_instance = new $kls();
         }
         return self::$_instance;

@@ -17,7 +17,7 @@ abstract class Model extends \ArrayObject
         return $this->_get_table_instance()->get($id);
     }
 
-    public function get_by($conds, $page = 0, $count = 30, $sort = null)
+    public function get_all($conds = [], $page = 0, $count = 30, $sort = null)
     {
         $offset = $count * ($page - 1);
         return $this->_get_table_instance()->get_by($conds, $offset, $limit, $sort);
