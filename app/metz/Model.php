@@ -20,12 +20,22 @@ abstract class Model extends \ArrayObject
     public function get_all($conds = [], $page = 0, $count = 30, $sort = null)
     {
         $offset = $count * ($page - 1);
-        return $this->_get_table_instance()->get_by($conds, $offset, $limit, $sort);
+        return $this->_get_table_instance()->get_by($conds, $sort, $offset, $count);
     }
 
-    public function update($conds)
+    public function insert($data)
     {
-        return $this->_get_table_instance()->update($conds);
+        return $this->_get_table_instance()->insert($data);
+    }
+
+    public function upsert($data)
+    {
+        return $this->_get_table_instance()->upsert($data);
+    }
+
+    public function update($data, $conds)
+    {
+        return $this->_get_table_instance()->update($data, $conds);
     }
 
     public function delete($conds)

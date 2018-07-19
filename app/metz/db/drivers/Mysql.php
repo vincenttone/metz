@@ -13,11 +13,6 @@ class Mysql implements Driver
 
     protected $_acts = null;
 
-    const ACT_FLAG_WAITING = 1;
-    const ACT_FLAG_LOADING = 2;
-    const ACT_FLAG_SEEKING_UPSERT = 3;
-    const ACT_FLAG_SEEKING_CONFLICT = 4;
-
     public function connect($ip, $port, $user = null, $password = null, $db = null, $ext = [])
     {
         $dsn = 'mysql:host=' . $ip . ';port=' . $port;
@@ -64,28 +59,28 @@ class Mysql implements Driver
 
     public function select($fields = null)
     {
-        $this->_add_act(self::ACT_QUERY);
+        $this->_add_act(MysqlAction::TYPE_QUERY);
         $this->_get_current_act()->set_fields($fields);
         return $this;
     }
 
     public function insert($data)
     {
-        $this->_add_act(self::ACT_INSERT);
+        $this->_add_act(MysqlAction::TYPE_INSERT);
         $this->_get_current_act()->insert($data);
         return $this;
     }
 
     public function update($data)
     {
-        $this->_add_act(self::ACT_UPDATE);
+        $this->_add_act(MysqlAction::TYPE_UPDATE);
         $this->_get_current_act()->update($data);
         return $this;
     }
 
-    public function del()
+    public function delete()
     {
-        return $this->_add_act(self::ACT_DELETE);
+        return $this->_add_act(MysqlAction::TYPE_DELETE);
     }
 
     public function count($fields = null)
@@ -130,7 +125,7 @@ class Mysql implements Driver
         return $this;
     }
 
-    public function on_conflict($keys)
+    public function on_conflict($keys = null)
     {
         $this->_get_current_act()->add_info(MysqlAction::INFO_KEY_ON_CONFLICT, $keys);
         return $this;
@@ -138,18 +133,17 @@ class Mysql implements Driver
 
     public function get()
     {
-        $exec_info = $this->_acts->get_exec_info();
-        $sth = $this->_conn->prepare($exec_info['prepare_str']);
-        $ret = $sth->execute($exec_info['data']);
-        return $sth->fetch();
+        $result = $this->get_all();
+        if (is_array($result) && isset($result[0])) {
+            return $result[0];
+        }
+        return null;
     }
 
     public function get_all()
     {
-        $exec_info = $this->_acts->get_exec_info();
-        $sth = $this->_conn->prepare($exec_info['prepare_str']);
-        $ret = $sth->execute($exec_info['data']);
-        return $sth->fetchAll();
+        $this->_add_act(MysqlAction::TYPE_SELECT);
+        return $this->exec();
     }
 
     public function exec()
@@ -157,19 +151,18 @@ class Mysql implements Driver
         if (is_array($this->_acts)) { // transaction, not support now
         } else {
             $exec_info = $this->_acts->get_exec_info();
-            $sth = $this->_conn->prepare($exec_info['prepare_str']);
-            $ret = $sth->execute($exec_info['data']);
+            $ret = $this->_prepare_and_run($exec_info['prepare_str'], $exec_info['data']);
             if ($ret) {
                 switch ($exec_info['type']) {
                 case MysqlAction::TYPE_INSERT:
-                case MysqlAction::TYPE_UPDATE:
-                    return $this->_conn->getLastInsertId();
+                    return $this->_conn->LastInsertId();
                 case MysqlAction::TYPE_SELECT:
-                    return $this->_conn->fetchAl();
+                    return $ret->fetchAll();
+                case MysqlAction::TYPE_UPSERT:
                 case MysqlAction::TYPE_UPDATE:
                 case MysqlAction::TYPE_DELETE:
                 default:
-                    return $sth->rowCount();
+                    return $ret->rowCount();
                 }
             } else {
                 throw new exceptions\db\ExecuteFailed(json_encode($sth->errorInfo()));
@@ -277,7 +270,8 @@ class Mysql implements Driver
         $sql .= ' PRIMARY KEY (' . $primary_key;
         $sql .= ')) ENGINE = ' . $this->_engine
              . ' DEFAULT CHARSET = ' . $this->_charset;
-        return $this->_prepare_and_run($sql, $data);
+        $this->_prepare_and_run($sql, $data);
+        return true;
     }
 
     public function create_indexes($table, $indexes)
@@ -306,23 +300,24 @@ class Mysql implements Driver
     {
         $sth= $this->_conn->prepare($prepare_str);
         $exec = $sth->execute($arr);
+        $str = $exec === false ? 'Execute sql failed: ' : 'Execute sql success: ';
+        $str .= $sth->queryString;
+        empty($arr) || $str .= ', data: ' . json_encode($arr);
+        $this->_monitor($str);
         if ($exec === false) {
             throw new exceptions\db\ExecuteFailed(
                 'Execute failed, sql: ' . $sth->queryString
                 . ', error info: ' . json_encode($sth->errorInfo())
             );
         }
-        $str = 'Execute sql success: ' . $sth->queryString;
-        empty($arr) || $str .= ', data: ' . json_encode($arr);
-        $this->_monitor($str);
-        return true;
+        return $sth;
     }
 
     protected function _monitor($str)
     {
-        $this->_monitor
-            && is_callable($this->_monitor)
-            && call_user_func($this->_monitor, $str);
+        $this->_monitor === null
+                        || (is_callable($this->_monitor)
+                            && call_user_func($this->_monitor, $str));
     }
 
     protected function _get_current_act()
@@ -339,8 +334,8 @@ class Mysql implements Driver
 
     protected function _add_act($act = null)
     {
-        if ($act === null) {
-            $this->_acts = new MysqlAction();
+        if ($this->_acts === null) {
+            $this->_acts = new MysqlAction($act);
         } else {
             $this->_acts->update_type($act);
         }

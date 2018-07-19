@@ -14,6 +14,10 @@ abstract class Table
     abstract public function get_fields_info();
     abstract public function get_related_table_info();
 
+    const INDEX_TYPE_PRIMARY = 1;
+    const INDEX_TYPE_UNIQ = 2;
+    const INDEX_TYPE_COMMON = 3;
+
     const FIELD_TYPE_INT = 1;
     const FIELD_TYPE_FLOAT = 2;
     const FIELD_TYPE_DOUBLE = 7;
@@ -77,7 +81,7 @@ abstract class Table
 
     public static function primary_key()
     {
-        return self::get_instance()->primary_key();
+        return self::get_instance()->get_primary_key();
     }
 
     public static function related_table_info()
@@ -127,23 +131,29 @@ abstract class Table
     public function insert($data)
     {
         $data = self::filter_by_fields($data);
-        $this->connect_and_select()
-            ->insert($data);
-        $id = $this->_get_connection()->last_insert_id();
+        $id = $this->connect_and_select()
+            ->insert($data)
+            ->exec();
         $this->_is_enable_cache() && $this->_cache(new Dao($this, $id, $data));
         return $id;
     }
 
+    /*
     public function upsert($data)
     {
         $this->_is_enable_cache() && $this->_clear_cache();
         $data = self::filter_by_fields($data);
         return $this->connect_and_select()
-            ->upsert($data);
+            ->insert($data)
+            ->on_conflict()
+            ->update($data)
+            ->exec();
     }
+    */
     
     public function update($data, $cond)
     {
+        is_array($cond) || $cond = [self::primary_key() => $cond];
         $data = self::filter_by_fields($data);
         if (is_array($cond)) {
             $cond = self::filter_by_fields($cond);
@@ -154,7 +164,8 @@ abstract class Table
         }
         return $this->connect_and_select()
             ->where($cond)
-            ->update($data);
+            ->update($data)
+            ->exec();
     }
 
     public function delete($cond)
@@ -168,7 +179,8 @@ abstract class Table
         }
         return $this->connect_and_select()
             ->where($cond)
-            ->delete();
+            ->delete()
+            ->exec();
     }
 
     public function count($conds = null)
@@ -184,7 +196,9 @@ abstract class Table
              ->where($conds);
         $offset > 0 && $h->offset($offset);
         $limit > 0 && $h->limit($limit);
-        $sort && $h->sort($sort);
+        if ($sort) {
+            $h->sort($sort);
+        }
         $result = $h->get_all();
         $daos = [];
         foreach ($result as $_d) {
@@ -252,13 +266,14 @@ abstract class Table
                 $db_name,
                 $ext
             );
+            $this->_conn->set_monitor(function ($str) {Log::info($str);});
         }
         return $this->_conn;
     }
 
     public static function filter_by_fields($data)
     {
-        $fields = self::fields();
+        $fields = self::fields_info();
         foreach ($data as $_f => $_d) {
             if (!isset($fields[$_f])) {
                 unset($data[$_f]);

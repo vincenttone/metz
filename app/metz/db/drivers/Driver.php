@@ -12,7 +12,7 @@ interface Driver
     public function select($fields = null);
     public function insert($data);
     public function update($data);
-    public function del();
+    public function delete();
     public function count($fields = null);
     public function exists();
     
@@ -21,7 +21,7 @@ interface Driver
     public function sort($fields);
     public function limit($count);
     public function offset($offset);
-    public function on_conflict($keys);
+    public function on_conflict($keys = null);
 
     public function get();
     public function get_all();

@@ -33,7 +33,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
     public function __construct($table, $id = null, $data = null)
     {
         $this->_table = $table;
-        $val && $this->_set_id($id);
+        $id && $this->_set_id($id);
         is_array($data) && $this->_fill($data);
     }
 
@@ -182,7 +182,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
     protected function _filter_data($status_array = [])
     {
         $data = [];
-        $fields = $this->_get_fields();
+        $fields = $this->get_table()->get_fields_info();
         foreach ($fields as $_f => $_conf) {
             if (!empty($status_array)
                 && (!isset($this->_data[_f][self::DATA_STATUS])
@@ -191,8 +191,8 @@ class Dao implements \JsonSerializable, \ArrayAccess
             ) {
                     continue;
             }
-            if (isset($this->_data[_f][self::DATA_VAL])) {
-                $data[$_f] = $this->_data[_f][self::DATA_VAL];
+            if (isset($this->_data[$_f][self::DATA_VAL])) {
+                $data[$_f] = $this->_data[$_f][self::DATA_VAL];
             }
         }
         return $data;
@@ -219,6 +219,13 @@ class Dao implements \JsonSerializable, \ArrayAccess
     */
     public function array_copy()
     {
+        if ($this->get_id() === null
+            || $this->_status == self::PROPERTY_STATUS_NOT_EXISTS
+        ) {
+            return '';
+        } elseif (empty($this->_data)) {
+            $this->load();
+        }
         $data = $this->_filter_data();
         $data[$this->get_primary_key()] = $this->_id;
         return $data;
