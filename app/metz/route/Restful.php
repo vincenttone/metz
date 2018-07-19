@@ -94,6 +94,7 @@ class Restful extends Route
             break;
         case self::ACTION_POST:
             $this->_method || $this->_method = self::METHOD_CREATE;
+            break;
         case self::ACTION_PUT:
             $this->_method || $this->_method = self::METHOD_UPDATE;
             if ($left_count > 0) {
@@ -101,6 +102,7 @@ class Restful extends Route
             } else {
                 throw new exceptions\db\unexpectedInput('put method without argument ' .  json_encode($args));
             }
+            break;
         case self::ACTION_DELETE:
             $this->_method || $this->_method = self::METHOD_DELETE;
             if ($left_count > 0) {
@@ -108,6 +110,7 @@ class Restful extends Route
             } else {
                 throw new exceptions\db\unexpectedInput('delete method without argument ' .  json_encode($args));
             }
+            break;
         }
     }
 
@@ -140,18 +143,21 @@ class Restful extends Route
                 $this->_klass = $kls . '\\' . $tail;
                 $this->_method = self::METHOD_CREATE;
             }
+            break;
         case self::ACTION_PUT:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
                 $this->_args[] = $this->_filter_var($tail);
                 $this->_method = self::METHOD_UPDATE;
             }
+            break;
         case self::ACTION_DELETE:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
                 $this->_args[] = $this->_filter_var($tail);
                 $this->_method = self::METHOD_DELETE;
             }
+            break;
         }
     }
 
