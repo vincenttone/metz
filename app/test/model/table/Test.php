@@ -2,7 +2,7 @@
 namespace Metz\app\test\model\table;
 
 use Metz\sys\Configure;
-use Metz\app\metz\db\Table;
+use Gaer\db\Table;
 
 class Test extends Table
 {
@@ -15,11 +15,11 @@ class Test extends Table
     {
         return [
             Table::INDEX_TYPE_PRIMARY => 'id',
-            self::INDEX_TYPE_UNIQ => [
+            Table::INDEX_TYPE_UNIQ => [
                 ['a1', 'b1', 'c1'],
                 'a2',
             ],
-            self::INDEX_TYPE_COMMON => [
+            Table::INDEX_TYPE_COMMON => [
                 'b2',
                 'c2',
                 ['b3', 'c3'],

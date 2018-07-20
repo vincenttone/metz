@@ -3,6 +3,7 @@
 		"psr-4": {
 			"Metz\\sys\\": "sys/",
 			"Metz\\lib\\": "lib/",
+			"Gaer\\": "gaer",
 			"Metz\\app\\": "app/"
 		},
 		"classmap": ["utils"],
