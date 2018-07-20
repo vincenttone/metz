@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\db\drivers;
+namespace Gaer\db\drivers;
 
 interface Driver
 {

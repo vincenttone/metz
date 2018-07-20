@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\validate;
+namespace Gaer\validate;
 
 class Request extends Input
 {

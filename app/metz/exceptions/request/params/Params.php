@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\exceptions\request;
+namespace Gaer\exceptions\request;
 
-use Metz\app\metz\exceptions\request\Request;
+use Gaer\exceptions\request\Request;
 
 class Params extends Request
 {

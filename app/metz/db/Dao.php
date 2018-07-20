@@ -1,8 +1,7 @@
 <?php
-namespace Metz\app\metz\db;
-use Metz\sys\Log;
-use Metz\app\metz\exceptions;
-use Metz\app\metz\configure\Driver;
+namespace Gaer\db;
+use Gaer\exceptions;
+use Gaer\configure\Driver;
 
 class Dao implements \JsonSerializable, \ArrayAccess
 {

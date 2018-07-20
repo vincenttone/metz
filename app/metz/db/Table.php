@@ -1,9 +1,8 @@
 <?php
-namespace Metz\app\metz\db;
+namespace Gaer\db;
 
-use Metz\sys\Log;
-use Metz\app\metz\exceptions;
-use Metz\app\metz\configure\Driver;
+use Gaer\exceptions;
+use Gaer\configure\Driver;
 
 abstract class Table
 {
@@ -97,15 +96,12 @@ abstract class Table
 
     public function create()
     {
-        return $this->_get_connection()->set_monitor(
-            function ($str) {
-                Log::info("[DB execute info]\t" . $str);
-            }
-        )->create_table(
-            $this->get_table_name(),
-            $this->get_fields_info(),
-            $this->get_primary_key()
-        );
+        return $this->_get_connection()
+            ->create_table(
+                $this->get_table_name(),
+                $this->get_fields_info(),
+                $this->get_primary_key()
+            );
     }
 
     public function create_index()

@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\db\drivers;
+namespace Gaer\db\drivers;
 
-use Metz\app\metz\exceptions;
+use Gaer\exceptions;
 
 class MysqlAction
 {

@@ -1,8 +1,8 @@
 <?php
-namespace Metz\app\metz\db\drivers;
+namespace Gaer\db\drivers;
 
-use Metz\app\metz\db\Table;
-use Metz\app\metz\exceptions;
+use Gaer\db\Table;
+use Gaer\exceptions;
 
 class Mysql implements Driver
 {

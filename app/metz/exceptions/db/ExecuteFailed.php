@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\exceptions\db;
+namespace Gaer\exceptions\db;
 
 class ExecuteFailed extends Db
 {

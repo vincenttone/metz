@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz;
+namespace Gaer;
 
-use Metz\app\metz\exceptions;
+use Gaer\exceptions;
 
 class RenderEngine
 {

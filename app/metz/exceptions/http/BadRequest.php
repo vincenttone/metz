@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\exceptions\http;
+namespace Gaer\exceptions\http;
 
 class BadRequest extends Http
 {

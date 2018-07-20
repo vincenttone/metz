@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\validate;
+namespace Gaer\validate;
 
-use Metz\app\metz\exceptions;
+use Gaer\exceptions;
 
 class Input
 {

@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\exceptions\request\params;
+namespace Gaer\exceptions\request\params;
 
 class UnexpecteParams extends Params
 {

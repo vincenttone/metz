@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz;
+namespace Gaer;
 
 class Home
 {
@@ -7,9 +7,6 @@ class Home
     {
         echo '<pre>';
         echo 'welcome to Metz.';
-        echo PHP_EOL;
-        echo 'version: ';
-        echo \Metz\sys\Constant::version_str();
         echo '</pre>';
     }
 }

@@ -1,10 +1,10 @@
 <?php
-namespace Metz\app\metz;
+namespace Gaer;
 
-use Metz\app\metz\validate\Input;
-use Metz\app\metz\validate\Post as VaPost;
-use Metz\app\metz\validate\Get as VaGet;
-use Metz\app\metz\validate\Request as VaReq;
+use Gaer\validate\Input;
+use Gaer\validate\Post as VaPost;
+use Gaer\validate\Get as VaGet;
+use Gaer\validate\Request as VaReq;
 
 class RequestHandler
 {

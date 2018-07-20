@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\exceptions\file;
-use Metz\exceptions\db\MetzEx;
+namespace Gaer\exceptions\file;
+use Gaer\exceptions\Base;
 
-class File extends \MetzEx
+class File extends Base
 {
 }

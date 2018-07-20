@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz;
+namespace Gaer;
 
-use Metz\app\metz\exceptions\db;
+use Gaer\exceptions\db;
 
 abstract class Model extends \ArrayObject
 {

@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\exceptions\http;
+namespace Gaer\exceptions\http;
 
-class Http extends \Metz\app\metz\exceptions\Metz
+class Http extends \Gaer\exceptions\Base
 {
     protected $code = 500;
 }

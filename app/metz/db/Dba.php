@@ -1,5 +1,5 @@
 <?php
-namespace Metz\app\metz\db;
+namespace Gaer\db;
 
 class Dba
 {

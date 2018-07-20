@@ -1,6 +1,6 @@
 <?php
-namespace Metz\app\metz\configure;
-use Metz\app\metz\db\drivers;
+namespace Gaer\configure;
+use Gaer\db\drivers;
 
 class Driver
 {

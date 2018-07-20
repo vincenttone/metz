@@ -1,7 +1,7 @@
 <?php
 namespace Metz\app\test\model;
 
-use Metz\app\metz\Model;
+use Gaer\Model;
 
 class T1 extends Model
 {

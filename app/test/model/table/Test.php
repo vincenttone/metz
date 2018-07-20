@@ -2,7 +2,7 @@
 namespace Metz\app\test\model\table;
 
 use Metz\sys\Configure;
-use Metz\app\metz\db\Table;
+use Gaer\db\Table;
 
 class Test extends Table
 {

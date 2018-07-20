@@ -1,8 +1,8 @@
 <?php
 namespace Metz\configure;
 
-use Metz\app\metz\route\Restful as R;
-use Metz\app\metz\route\Common as C;
+use Gaer\route\Restful as R;
+use Gaer\route\Common as C;
 
 class Route
 {
@@ -22,8 +22,9 @@ class Route
             new C('metz/app/test'),
             new C('/c/play',           '\\Metz\\app\\test'),
             new C('/c/play/m',          \Metz\app\test\A::class, 'z'),
+            new R('test/t1',          \Metz\app\test\controller\A::class),
             */
-            (new C('/',           '\\Metz\\app\\metz'))->disable_controller(),
+            (new C('/',           '\\Gaer'))->disable_controller(),
             // new R(RESTFUL_URI, ROUTE_CLASS, ROUTE_METHOD),
             // new C(COMMON_URI, ROUTE_CLASS, ROUTE_METHOD),
         ];

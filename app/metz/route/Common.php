@@ -1,7 +1,7 @@
 <?php
-namespace Metz\app\metz\route;
+namespace Gaer\route;
 
-use Metz\app\metz\exceptions;
+use Gaer\exceptions;
 
 class Common extends Route
 {

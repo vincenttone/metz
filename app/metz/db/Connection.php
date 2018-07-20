@@ -1,10 +1,10 @@
 <?php
-namespace Metz\app\metz\db;
+namespace Gaer\db;
 
-use Metz\app\metz\configure\Driver;
-use Metz\app\metz\exceptions\db;
+use Gaer\configure\Driver;
+use Gaer\exceptions\db;
 
-use Metz\app\metz\db\drivers;
+use Gaer\db\drivers;
 
 class Connection implements \JsonSerializable
 {
