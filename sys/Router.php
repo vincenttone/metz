@@ -10,6 +10,7 @@ class Router
 
     private static $_instance = null;
     protected $_router = [__CLASS__, '_default_router'];
+    protected $_ex_handler = null;
 
     private function __construct()
     {
@@ -36,19 +37,19 @@ class Router
      * @return array The return value should include 'errno' and 'data'
      */
     function parse_url()
-	{
+    {
         $request_uri = trim($_SERVER['REQUEST_URI']);
         $request_uri = trim($request_uri, '/');
-		/* parse request uri start
-		 * -----------------------------------
-		 */
-		$p           = strpos($request_uri, '?');
-		$request_uri = $p !== false ? substr($request_uri, 0, $p) : $request_uri;
-		// security request uri filter
-		if (preg_match('/(\.\.|\"|\'|<|>)/', $request_uri)) {
-			return array('errno' => self::ERRNO_FORBIDDEN, 'data' => "permission denied.");
-		}
-		// get display format
+        /* parse request uri start
+         * -----------------------------------
+         */
+        $p           = strpos($request_uri, '?');
+        $request_uri = $p !== false ? substr($request_uri, 0, $p) : $request_uri;
+        // security request uri filter
+        if (preg_match('/(\.\.|\"|\'|<|>)/', $request_uri)) {
+            return array('errno' => self::ERRNO_FORBIDDEN, 'data' => "permission denied.");
+        }
+        // get display format
         $url_piece = empty($request_uri) ? [] : explode('/', $request_uri);
         $display = '';
         $file = '';
@@ -70,7 +71,7 @@ class Router
                 'suffix' => $display,
             ]
         ];
-	}
+    }
 
     /**
      * @param array
@@ -80,6 +81,14 @@ class Router
     {
         if (is_callable($router)) {
             $this->_router = $router;
+        }
+        return $this;
+    }
+
+    function register_exception_handler($handler)
+    {
+        if (is_callable($handler)) {
+            $this->_ex_handler = $handler;
         }
         return $this;
     }
@@ -94,26 +103,15 @@ class Router
             return $parse_url;
         }
         $url_piece = $parse_url['data'];
-        $router = call_user_func($this->_router, $url_piece);
-        if (isset($router['errno']) && $router['errno'] === self::ERRNO_OK) {
-            return ['errno' => self::ERRNO_OK, 'data' => $router];
-        } elseif (isset($router['errno'])){
-            switch ($router['errno']) {
-                case self::ERRNO_FORBIDDEN:
-                    Log::info('forbidden page! url:[%s] case:[%s]', [json_encode($parse_url), json_encode($router)]);
-                    return ['errno' => self::ERRNO_FORBIDDEN, 'data' => 'You cannot visit this page!'];
-                case self::ERRNO_SERVER_ERR:
-                    Log::error('page err! url:[%s] case:[%s]', [json_encode($parse_url), json_encode($router)]);
-                    return ['errno' => self::ERRNO_SERVER_ERR, 'data' => 'Something wrong!'];
-                case self::ERRNO_NOT_FOUND:
-                default:
-                    Log::notice('page not found! url:[%s] case:[%s]', [json_encode($parse_url), json_encode($router)]);
-                    return ['errno' => self::ERRNO_NOT_FOUND, 'data' => 'PAGE NOT FOUND!'];
+        try {
+            $router = call_user_func($this->_router, $url_piece);
+        } catch (\Exception $ex) {
+            if ($this->_ex_handler !== null && is_callable($this->_ex_handler)) {
+                return call_user_func($this->_ex_handler, $ex);
             }
-        } else {
-            Log::notice('page not found! url:[%s] case:[%s]', [json_encode($parse_url), json_encode($router)]);
-            return ['errno' => self::ERRNO_FORBIDDEN, 'data' => 'PAGE NOT FOUND!'];
+            throw $ex;
         }
+        return $router;
     }
 
     /**
