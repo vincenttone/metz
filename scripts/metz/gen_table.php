@@ -1,17 +1,18 @@
 <?php
 require_once(dirname(dirname(dirname(__FILE__))) . '/init.php');
-$args = getopt('d:a:');
+$args = getopt('t:a:');
 
 print_r($args);
-if (!isset($args['d']) || !isset($args['a'])) {
-    echo 'USEAGE: ' . pathinfo(__FILE__)['filename'] . ' -d {dao} -a {app}' . PHP_EOL;
+if (!isset($args['t']) || !isset($args['a'])) {
+    echo 'USEAGE: ' . pathinfo(__FILE__)['filename'] . ' -t {table} -a {app}' . PHP_EOL;
     exit;
 }
 
 $app = $args['a'];
-$dao_name = $args['d'];
+$table_name = $args['t'];
 
-$dao_class = '\\Metz\\app\\' . $app . '\\dao\\' . ucfirst($dao_name);
+$table_class = '\\Metz\\app\\' . $app . '\\model\\' . ucfirst($table_name);
 
-$dao = new $dao_class;
-$dao->generate_table();
+$table = new $table_class;
+$table->create();
+$table->create_index();
