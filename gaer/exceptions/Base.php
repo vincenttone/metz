@@ -8,4 +8,9 @@ class Base extends \Exception
         is_array($msg) && $msg = json_encode($msg);
         parent::__construct($msg, $code, $previous);
     }
+
+    public function getResponseMsg()
+    {
+        return 'something wrong happend...';
+    }
 }

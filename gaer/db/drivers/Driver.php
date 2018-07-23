@@ -27,8 +27,6 @@ interface Driver
     public function get_all();
     public function exec();
 
-    public function set_monitor($monitor);
-
     // advanced function
     //public function push($key, $data);
     //public function pop($key);

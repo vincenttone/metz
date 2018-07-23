@@ -3,13 +3,13 @@ namespace Gaer\db\drivers;
 
 use Gaer\db\Table;
 use Gaer\exceptions;
+use Gaer\Monitor;
 
 class Mysql implements Driver
 {
     protected $_conn = null;
     protected $_charset = 'utf8';
     protected $_engine = 'InnoDB';
-    protected $_monitor = null;
 
     protected $_acts = null;
 
@@ -48,12 +48,6 @@ class Mysql implements Driver
     public function set_table($table)
     {
         $this->_get_current_act()->set_table($table);
-        return $this;
-    }
-
-    public function set_monitor($monitor)
-    {
-        $this->_monitor = $monitor;
         return $this;
     }
 
@@ -303,7 +297,7 @@ class Mysql implements Driver
         $str = $exec === false ? 'Execute sql failed: ' : 'Execute sql success: ';
         $str .= $sth->queryString;
         empty($arr) || $str .= ', data: ' . json_encode($arr);
-        $this->_monitor($str);
+        Monitor::record($str);
         if ($exec === false) {
             throw new exceptions\db\ExecuteFailed(
                 'Execute failed, sql: ' . $sth->queryString
@@ -311,13 +305,6 @@ class Mysql implements Driver
             );
         }
         return $sth;
-    }
-
-    protected function _monitor($str)
-    {
-        $this->_monitor === null
-                        || (is_callable($this->_monitor)
-                            && call_user_func($this->_monitor, $str));
     }
 
     protected function _get_current_act()

@@ -262,7 +262,6 @@ abstract class Table
                 $db_name,
                 $ext
             );
-            $this->_conn->set_monitor(function ($str) {Log::info($str);});
         }
         return $this->_conn;
     }
