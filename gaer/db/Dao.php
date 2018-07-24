@@ -1,7 +1,6 @@
 <?php
 namespace Gaer\db;
 use Gaer\exceptions;
-use Gaer\configure\Driver;
 
 class Dao implements \JsonSerializable, \ArrayAccess
 {

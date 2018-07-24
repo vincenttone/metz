@@ -1,7 +1,6 @@
 <?php
 namespace Gaer\db;
 
-use Gaer\configure\Driver;
 use Gaer\exceptions\db;
 
 use Gaer\db\drivers;

@@ -2,7 +2,6 @@
 namespace Gaer\db;
 
 use Gaer\exceptions;
-use Gaer\configure\Driver;
 
 abstract class Table
 {
