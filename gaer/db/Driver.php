@@ -1,6 +1,5 @@
 <?php
 namespace Gaer\db;
-use Gaer\db\drivers;
 
 class Driver
 {
