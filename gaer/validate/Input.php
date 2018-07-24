@@ -87,7 +87,10 @@ class Input
     {
         if (empty($this->_val)) {
             if ($this->_required) {
-                $this->_tigger_error();
+                throw new exceptions\request\params\MissingParams(
+                    'required params, but got: '
+                    . json_encode($this->_val)
+                );
             } elseif ($this->_default) {
                 $this->_val = $this->_default;
                 return;
@@ -104,7 +107,10 @@ class Input
             $match = preg_match($this->_regexp, $this->_val) > 0;
         }
         if ($match == false) {
-            $this->_tigger_error();
+            throw new exceptions\request\params\unexpecteParams(
+                'unexpect params format: '
+                . json_encode($this->_val)
+            );
         }
         return $this;
     }
@@ -126,10 +132,5 @@ class Input
         } else {
             return filter_var($this->_val, $filter, $options);
         }
-    }
-
-    protected function _tigger_error()
-    {
-        throw new exceptions\request\Request('unexpect val: ' . json_encode($this->_val));
     }
 }
