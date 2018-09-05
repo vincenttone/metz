@@ -32,14 +32,14 @@ class RenderEngine
     protected $_template_dir = null;
     protected $_template_suffix = 'phtml';
     protected $_buffer = '';
-    protected $_render_fmt = self::TYPE_HTML;
+    protected $_render_fmt = null;
 
     protected function __clone()
     {
         throw new \Exception('clone failed!');
     }
 
-    public static function engine($dir, $globals = [], $suffix = 'phtml')
+    public static function engine($dir = null, $globals = [], $suffix = 'phtml')
     {
         if (self::$_instance === null) {
             $kls = get_class();
@@ -48,14 +48,58 @@ class RenderEngine
         return self::$_instance;
     }
 
+    public static function is_supporting_format($fmt)
+    {
+        return isset(self::$_content_type_map[$fmt]);
+    }
+
+    public static function output($format, $data)
+    {
+        self::format($format);
+        switch($format) {
+        case self::TYPE_JSON:
+            self::json($data);
+            break;
+        case self::TYPE_HTML:
+        case self::TYPE_XML:
+            if (is_array($data)) {
+                $data = self::_format_to_xml($data);
+            }
+        case self::TYPE_TXT:
+        case self::TYPE_JPEG:
+        case self::TYPE_JPG:
+        case self::TYPE_PNG:
+        case self::TYPE_JAVASCRIPT:
+        default:
+            if (!is_scalar($data)) {
+                Monitor::warn('output data is not a scalar value' . json_encode($data));
+                $data = json_encode($data);
+            }
+            self::engine()->load($data);
+            self::engine()->display();
+        }
+    }
+
+    public static function current_format()
+    {
+        return self::engine()->get_render_format();
+    }
+
     public static function format($type)
     {
         return self::engine()->set_render_format($type);
     }
 
+    public static function plain($data)
+    {
+        self::engine()->load($data);
+        return self::engine()->display();
+    }
+
     public static function json($data)
     {
-        return self::engine()->render_to_json($data);
+        self::engine()->format_to_json($data);
+        return self::engine()->display();
     }
 
     public static function html($template, $var = [], $base = null)
@@ -63,9 +107,9 @@ class RenderEngine
         return self::engine()->render($template, $var, $base);
     }
 
-    protected function __construct($dir, $globals = [], $suffix = 'phtml')
+    protected function __construct($dir = null, $globals = [], $suffix = 'phtml')
     {
-        $this->set_template_dir($dir);
+        $dir && $this->set_template_dir($dir);
         $this->set_template_suffix($suffix);
         $this->assign_global_vars($globals);
     }
@@ -103,9 +147,15 @@ class RenderEngine
      * @param array $data
      * @param string $format
      */
-    function render_to_json($data)
+    function format_to_json($data)
     {
         $this->_buffer = json_encode($data);
+        return $this->_buffer;
+    }
+
+    function load($data)
+    {
+        $this->_buffer = $data;
         return $this->_buffer;
     }
     
@@ -125,6 +175,11 @@ class RenderEngine
             $this->_render_fmt = $type;
             header('Content-Type: ' . self::$_content_type_map[$type]);
         }
+    }
+
+    function get_render_format()
+    {
+        return $this->_render_fmt;
     }
     /**
      * @param array $template
@@ -176,5 +231,31 @@ class RenderEngine
         ob_end_clean();
         ob_start();
         return $this;
+    }
+
+    function _format_to_xml($arr,$dom = null, $node = null, $root = 'xml', $cdata = false)
+    {
+        if (!$dom){
+            $dom = new DOMDocument('1.0','utf-8');
+        }
+        if(!$node){
+            $node = $dom->createElement($root);
+            $dom->appendChild($node);
+        }
+        foreach ($arr as $key=>$value){
+            $child_node = $dom->createElement(is_string($key) ? $key : 'node');
+            $node->appendChild($child_node);
+            if (!is_array($value)){
+                if (!$cdata) {
+                    $data = $dom->createTextNode($value);
+                }else{
+                    $data = $dom->createCDATASection($value);
+                }
+                $child_node->appendChild($data);
+            }else {
+                arrayToXml($value,$dom,$child_node,$root,$cdata);
+            }
+        }
+        return $dom->saveXML();
     }
 }

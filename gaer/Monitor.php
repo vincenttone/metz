@@ -26,6 +26,26 @@ class Monitor
         return self::_get_monitor()->_register_monitor($m);
     }
 
+    static function debug($info)
+    {
+        return self::record($info, self::LEVEL_DEBUG);
+    }
+
+    static function info($info)
+    {
+        return self::record($info, self::LEVEL_INFO);
+    }
+
+    static function warn($info)
+    {
+        return self::record($info, self::LEVEL_WARNING);
+    }
+
+    static function error($info)
+    {
+        return self::record($info, self::LEVEL_ERROR);
+    }
+
     static function record($info, $level = self::LEVEL_INFO)
     {
         return self::_get_monitor()->_record($info, $level);

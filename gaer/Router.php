@@ -81,7 +81,12 @@ class Router
         krsort($routes);
         foreach ($routes as $_r) {
             if ($_r->match($url_info['uri'])) {
-                return $_r->exec();
+                $ret = $_r->exec();
+                $fmt = RenderEngine::current_format();
+                if ($fmt && RenderEngine::is_supporting_format($fmt)) {
+                    RenderEngine::output($fmt, $ret);
+                }
+                return $ret;
             }
         }
         throw new exceptions\http\NotFound('not configure for uri: [' . $url_info['uri'] . ']');
