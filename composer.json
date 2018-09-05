@@ -1,5 +1,5 @@
 {
-	"name": "vii/metz",
+	"name": "vincenttone/metz",
 	"version": "0.1.1",
 	"autoload": {
 		"psr-4": {
