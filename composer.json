@@ -1,4 +1,6 @@
 {
+	"name": "vii/metz",
+	"version": "0.1.1",
 	"autoload": {
 		"psr-4": {
 			"Metz\\sys\\": "sys/",
