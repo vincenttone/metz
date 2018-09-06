@@ -55,7 +55,6 @@ class RenderEngine
 
     public static function output($format, $data)
     {
-        self::format($format);
         switch($format) {
         case self::TYPE_JSON:
             self::json($data);
@@ -179,7 +178,7 @@ class RenderEngine
 
     function get_render_format()
     {
-        return $this->_render_fmt;
+        return $this->_render_fmt ?? self::TYPE_HTML;
     }
     /**
      * @param array $template

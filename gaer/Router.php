@@ -47,7 +47,7 @@ class Router
     static function expected_content_type()
     {
         $format_str = isset($_SERVER['HTTP_ACCEPT']) ? strtolower($_SERVER['HTTP_ACCEPT']) : 'text/html';
-        $format = RenderEngine::content_type_str($format);
+        $format = RenderEngine::content_type_str($format_str);
         return $format ?? RenderEngine::TYPE_HTML;
     }
 
@@ -90,9 +90,11 @@ class Router
         krsort($routes);
         foreach ($routes as $_r) {
             if ($_r->match($url_info['uri'])) {
-                $ret = $_r->exec();
                 $fmt = RenderEngine::current_format();
-                if ($fmt && RenderEngine::is_supporting_format($fmt)) {
+                $fmt_supporting = $fmt && RenderEngine::is_supporting_format($fmt);
+                $fmt_supporting && RenderEngine::format($fmt);
+                $ret = $_r->exec();
+                if ($fmt_supporting && $ret) {
                     RenderEngine::output($fmt, $ret);
                 }
                 return $ret;
