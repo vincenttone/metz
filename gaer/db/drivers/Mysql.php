@@ -165,7 +165,7 @@ class Mysql implements Driver
         throw new exceptions\db\ExecuteFailed('executing option not supported');
     }
 
-    public function create_table($table_name, $fields_info, $primary_key)
+    public function create_table($table_name, $fields_info, $primary_key = null)
     {
         $sql = 'CREATE TABLE IF NOT EXISTS `' . $table_name . '` (';
         foreach ($fields_info as $_f => $_i) {
@@ -261,8 +261,8 @@ class Mysql implements Driver
             }
             $sql .= ',';
         }
-        $sql .= ' PRIMARY KEY (' . $primary_key;
-        $sql .= ')) ENGINE = ' . $this->_engine
+        $primary_key && $sql .= ' PRIMARY KEY (' . $primary_key . ')';
+        $sql .= ') ENGINE = ' . $this->_engine
              . ' DEFAULT CHARSET = ' . $this->_charset;
         $this->_prepare_and_run($sql, $data);
         return true;
