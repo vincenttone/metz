@@ -10,7 +10,6 @@ abstract class Table
     abstract public function get_table_name();
     abstract public function get_indexes();
     abstract public function get_fields_info();
-    abstract public function get_related_table_info();
 
     const INDEX_TYPE_PRIMARY = 1;
     const INDEX_TYPE_UNIQ = 2;
@@ -82,15 +81,12 @@ abstract class Table
         return self::get_instance()->get_primary_key();
     }
 
-    public static function related_table_info()
-    {
-        return self::get_instance()->get_related_table_info();
-    }
-
     public function get_primary_key()
     {
         $indexes = $this->get_indexes();
-        return $indexes[self::INDEX_TYPE_PRIMARY];
+        return isset($indexes[self::INDEX_TYPE_PRIMARY])
+            ? $indexes[self::INDEX_TYPE_PRIMARY]
+            : null;
     }
 
     public function create()
@@ -114,13 +110,17 @@ abstract class Table
 
     public function get($primary)
     {
-        $dao = null;
-        if ($this->_is_enable_cache()) {
-            $dao = $this->_load_from_cache($primary);
+        $primary_key = $this->get_primary_key();
+        if (!$primary_key) {
+            throw new exceptions\db\unexpectedInput('no primary key in table: ' . get_called_class());
         }
-        $dao === null && $dao = new Dao($this, $primary);
-        $this->_is_enable_cache() && $this->_cache($dao);
-        return $dao;
+        $data = null;
+        if ($this->_is_enable_cache()) {
+            $data = $this->_load_from_cache($primary);
+        }
+        $data || $data = $this->get_by([$primary_key => $primary]);
+        $this->_is_enable_cache() && $this->_cache($primary, $data);
+        return $data;
     }
 
     public function insert($data)
@@ -129,7 +129,7 @@ abstract class Table
         $id = $this->connect_and_select()
             ->insert($data)
             ->exec();
-        $this->_is_enable_cache() && $this->_cache(new Dao($this, $id, $data));
+        $this->_is_enable_cache() && $this->_cache($id, $data);
         return $id;
     }
 
@@ -145,17 +145,19 @@ abstract class Table
             ->exec();
     }
     */
-    
+
     public function update($data, $cond)
     {
-        is_array($cond) || $cond = [self::primary_key() => $cond];
+        $primary_key = self::primary_key();
         $data = self::filter_by_fields($data);
         if (is_array($cond)) {
             $cond = self::filter_by_fields($cond);
             $this->_is_enable_cache() && $this->_clear_cache();
-        } else {
-            $cond = [self::primary_key() => $cond];
+        } elseif ($primary_key) {
+            $cond = [$primary_key => $cond];
             $this->_is_enable_cache() && $this->_clear_cache($cond);
+        } else {
+            throw new exceptions\db\unexpectedInput('no primary key in table: ' . get_called_class());
         }
         return $this->connect_and_select()
             ->where($cond)
@@ -165,12 +167,15 @@ abstract class Table
 
     public function delete($cond)
     {
+        $primary_key = self::primary_key();
         if (is_array($cond)) {
             $cond = self::filter_by_fields($cond);
             $this->_is_enable_cache() && $this->_clear_cache();
-        } else {
-            $cond = [self::primary_key() => $cond];
+        } elseif ($primary_key) {
+            $cond = [$primary_key => $cond];
             $this->_is_enable_cache() && $this->_clear_cache($cond);
+        } else {
+            throw new exceptions\db\unexpectedInput('no primary key in table: ' . get_called_class());
         }
         return $this->connect_and_select()
             ->where($cond)
@@ -195,11 +200,7 @@ abstract class Table
             $h->sort($sort);
         }
         $result = $h->get_all();
-        $daos = [];
-        foreach ($result as $_d) {
-            $daos[] = new Dao($this, $_d[self::primary_key()], $_d);
-        }
-        return $daos;
+        return $result;
     }
 
     public function multi_insert($data)
@@ -216,14 +217,6 @@ abstract class Table
     {
         $fields_info = $this->get_fields_info();
         return array_keys($fields_info);
-    }
-
-    public function get_related_key($table_cls, $key)
-    {
-        $info = $this->get_related_table_info();
-        return isset($info[$table_cls][$key])
-            ? $info[$table_cls][$key]
-            : null;
     }
 
     public function connect_and_select()
@@ -290,12 +283,15 @@ abstract class Table
 
     protected function _is_enable_cache()
     {
+        if (!self::primary_key()) {
+            return false;
+        }
         return is_array($this->_cache);
     }
 
-    protected function _cache($dao)
+    protected function _cache($id, $data)
     {
-        $this->_cache[$dao[$this->get_primary_key()]] = $dao;
+        $this->_cache[$id] = $data;
         return $this;
     }
 
@@ -306,9 +302,7 @@ abstract class Table
 
     protected function _clear_cache($target = null)
     {
-        if (is_object($target) && ($target instanceof Dao)) {
-            $this->_clear_cache($target[$this->get_primary_key()]);
-        } elseif (isset($this->_cache[$target])) {
+        if ($target && isset($this->_cache[$target])) {
             unset($this->_cache[$target]);
         } else {
             $this->_cache = [];

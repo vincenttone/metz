@@ -2,8 +2,10 @@
 namespace Gaer\db;
 use Gaer\exceptions;
 
-class Dao implements \JsonSerializable, \ArrayAccess
+abstract class Dao implements \JsonSerializable, \ArrayAccess
 {
+    abstract protected function _get_table_class(); // table class name
+
     const DATA_VAL = 1;
     const DATA_STATUS = 2;
 
@@ -28,9 +30,9 @@ class Dao implements \JsonSerializable, \ArrayAccess
     // methods
     protected $_ext_methods = null;
 
-    public function __construct($table, $id = null, $data = null)
+    public function __construct($id = null, $data = null)
     {
-        $this->_table = $table;
+        $this->_table = $this->get_table();
         $id && $this->_set_id($id);
         is_array($data) && $this->_fill($data);
     }
@@ -42,6 +44,10 @@ class Dao implements \JsonSerializable, \ArrayAccess
 
     public function get_table()
     {
+        if (!$this->_table) {
+            $kls = $this->_get_table();
+            $this->_table = $kls::get_instance();
+        }
         return $this->_table;
     }
 
@@ -52,10 +58,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
 
     public function load()
     {
-        $data = $this->get_table()
-              ->connect_and_select()
-              ->where([$this->get_primary_key() => $this->get_id()])
-              ->get();
+        $data = $this->get_table()->get($this->get_id());
         $this->_fill($data);
         $this->_status = self::PROPERTY_STATUS_SYNCED;
         return $this;
@@ -88,7 +91,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
     {
         $id = $this->get_table()->insert($this->_filter_data());
         $this->_status = self::PROPERTY_STATUS_SYNCED;
-        if (!isset($data[$this->table()->get_primary_key()])
+        if (!isset($data[$this->get_primary_key()])
             && $this->_id === null
         ) {
             $this->_set_id($id);
@@ -115,6 +118,12 @@ class Dao implements \JsonSerializable, \ArrayAccess
         return $this;
     }
 
+    protected function _extend_table()
+    {
+        return [
+            // TableClass => [[$binding_key1 => $key1, ...], (optional: [field => alias, ...])],
+        ];
+    }
     /**
      * @desc select by uniq indexes
      * @param $cond
@@ -144,7 +153,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
             $this->_status = self::PROPERTY_STATUS_NOT_EXISTS;
             return $this;
         }
-        $fields = $this->get_table()->get_fields_info();
+        $fields = $this->_get_fields_info();
         foreach ($fields as $_f => $_conf) {
             if ($_f == $this->get_primary_key()) {
                 continue;
@@ -180,7 +189,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
     protected function _filter_data($status_array = [])
     {
         $data = [];
-        $fields = $this->get_table()->get_fields_info();
+        $fields = $this->_get_fields_info();
         foreach ($fields as $_f => $_conf) {
             if (!empty($status_array)
                 && (!isset($this->_data[_f][self::DATA_STATUS])
@@ -196,9 +205,16 @@ class Dao implements \JsonSerializable, \ArrayAccess
         return $data;
     }
 
+    protected function _get_fields_info()
+    {
+        $table = $this->_get_table();
+        return $table::get_instance()->get_fields_info();
+    }
+
     protected function _get_fields()
     {
-        return $this->get_table()->get_fields();
+        $fields = $this->_get_fields_info();
+        return array_keys($fields);
     }
 
     protected function _enable_upsert()
@@ -238,7 +254,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
     {
         if ($this->_ext_methods === null) {
             $this->_ext_methods = [];
-            $fields = $this->get_table()->get_fields_info();
+            $fields = $this->_get_fields_info();
             if (!empty($fields)) {
                 foreach ($fields as $_f => $_i) {
                     $this->_ext_methods['set_' . $_f] = $_f;
@@ -287,7 +303,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
 
     public function __set($field, $val)
     {
-        $fields = $this->get_table()->get_fields_info();
+        $fields = $this->_get_fields_info();
         if (isset($fields[$field])) {
             if (isset($this->_data[$field])
                 && isset($this->_data[$field][self::DATA_STATUS])
@@ -344,7 +360,7 @@ class Dao implements \JsonSerializable, \ArrayAccess
         if ($offset == $this->get_primary_key()) {
             $this->_set_id($val);
         } else {
-            $fields_info = $this->_get_table()->get_fields_info();
+            $fields_info = $this->_get_fields_info();
             if (isset($fields_info[$offset])) {
                 $this->_data[$offset] = $val;
             }

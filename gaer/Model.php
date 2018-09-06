@@ -5,7 +5,16 @@ use Gaer\exceptions\db;
 
 abstract class Model extends \ArrayObject
 {
-    abstract protected function _get_binding_table_class();
+    abstract protected function _get_binding_dao_class();
+
+    protected static function _related_daos()
+    {
+        return [
+            // daoClass => ['key' => [$binding_key1 => $key1, ...], 'type' => '1-1 or 1-more']
+        ];
+    }
+
+    protected static $_table = null;
 
     public function count($conds = null)
     {
@@ -14,7 +23,7 @@ abstract class Model extends \ArrayObject
 
     public function get($id)
     {
-        return $this->_get_table_instance()->get($id);
+        return new $this->_get_binding_dao_class($id);
     }
 
     public function get_all($conds = [], $page = 0, $count = 30, $sort = null)
@@ -45,7 +54,11 @@ abstract class Model extends \ArrayObject
 
     protected function _get_table_instance()
     {
-        $kls = $this->_get_binding_table_class();
-        return $kls::get_instance();
+        if (!self::$_table) {
+            $dao_kls = $this->_get_binding_dao_class();
+            $dao = new $dao_kls;
+            self::$_table = $dao->get_table();
+        }
+        return self::$_table;
     }
 }
