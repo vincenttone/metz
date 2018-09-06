@@ -258,4 +258,9 @@ class RenderEngine
         }
         return $dom->saveXML();
     }
+
+    public static function content_type_str($type)
+    {
+        return self::$_content_type_map[$type] ?? null;
+    }
 }

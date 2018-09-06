@@ -1,6 +1,7 @@
 <?php
 namespace Gaer;
 
+use Gaer\RenderEngine;
 use Gaer\exceptions;
 
 class Router
@@ -42,6 +43,14 @@ class Router
         }
         return self::$_instance;
     }
+
+    static function expected_content_type()
+    {
+        $format_str = isset($_SERVER['HTTP_ACCEPT']) ? strtolower($_SERVER['HTTP_ACCEPT']) : 'text/html';
+        $format = RenderEngine::content_type_str($format);
+        return $format ?? RenderEngine::TYPE_HTML;
+    }
+
     public function load_configure($configure)
     {
         $this->_configure = $configure;

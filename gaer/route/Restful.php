@@ -1,6 +1,8 @@
 <?php
 namespace Gaer\route;
 
+use Gaer\RenderEngine;
+use Gaer\Router;
 use Gaer\exceptions;
 
 class Restful extends Route
@@ -82,21 +84,22 @@ class Restful extends Route
 
     protected function _choose_method($args = [])
     {
+        $ret_html = Router::expected_content_type() == RenderEngine::TYPE_HTML;
         $left_count = count($args);
         switch ($this->_get_action()) {
         case self::ACTION_GET:
             if ($left_count > 0) {
                 $this->_args[] = $this->_filter_var($args[0]);
-                $this->_method || $this->_method = self::METHOD_GET;
+                $this->_method || $this->_method = $ret_html ? self::METHOD_SHOW : self::METHOD_GET;
             } else {
-                $this->_method || $this->_method = self::METHOD_INDEX;
+                $this->_method || $this->_method = $ret_html ? self::METHOD_LIST : self::METHOD_INDEX;
             }
             break;
         case self::ACTION_POST:
-            $this->_method || $this->_method = self::METHOD_CREATE;
+            $this->_method || $this->_method = $ret_html ? self::METHOD_NEW : self::METHOD_CREATE;
             break;
         case self::ACTION_PUT:
-            $this->_method || $this->_method = self::METHOD_UPDATE;
+            $this->_method || $this->_method = $ret_html ? self::METHOD_MODIFY : self::METHOD_UPDATE;
             if ($left_count > 0) {
                 $this->_args[] = $this->_filter_var($args[0]);
             } else {
@@ -104,7 +107,7 @@ class Restful extends Route
             }
             break;
         case self::ACTION_DELETE:
-            $this->_method || $this->_method = self::METHOD_DELETE;
+            $this->_method || $this->_method = $ret_html ? self::METHOD_REMOVE : self::METHOD_DELETE;
             if ($left_count > 0) {
                 $this->_args[] = $this->_filter_var($args[0]);
             } else {
@@ -116,6 +119,7 @@ class Restful extends Route
 
     protected function _choose_method_without_class($args)
     {
+        $ret_html = Router::expected_content_type() == RenderEngine::TYPE_HTML;
         $tail = array_pop($args);
         $kls = rtrim($this->_prefix, '\\');
         if ($this->_controller_path) {
@@ -134,28 +138,28 @@ class Restful extends Route
                 $kls .= '\\' . $tail;
                 if (class_exists($kls)) {
                     $this->_klass = $kls;
-                    $this->_method = self::METHOD_INDEX;
+                    $this->_method = $ret_html ? self::METHOD_LIST : self::METHOD_INDEX;
                 }
             }
             break;
         case self::ACTION_POST:
             if (class_exists($kls . '\\' . $tail)) {
                 $this->_klass = $kls . '\\' . $tail;
-                $this->_method = self::METHOD_CREATE;
+                $this->_method = $ret_html ? self::METHOD_NEW : self::METHOD_CREATE;
             }
             break;
         case self::ACTION_PUT:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
                 $this->_args[] = $this->_filter_var($tail);
-                $this->_method = self::METHOD_UPDATE;
+                $this->_method = $ret_html ? self::METHOD_MODIFY : self::METHOD_UPDATE;
             }
             break;
         case self::ACTION_DELETE:
             if (class_exists($kls)) {
                 $this->_klass = $kls;
                 $this->_args[] = $this->_filter_var($tail);
-                $this->_method = self::METHOD_DELETE;
+                $this->_method = $ret_html ? self::METHOD_REMOVE : self::METHOD_DELETE;
             }
             break;
         }
