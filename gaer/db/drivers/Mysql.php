@@ -167,6 +167,7 @@ class Mysql implements Driver
 
     public function create_table($table_name, $fields_info, $primary_key = null)
     {
+        $data = [];
         $sql = 'CREATE TABLE IF NOT EXISTS `' . $table_name . '` (';
         foreach ($fields_info as $_f => $_i) {
             $sql .= $_f . ' ';
@@ -210,16 +211,18 @@ class Mysql implements Driver
                     && $_i[Table::FIELD_INFO_UNSIGNED]
                     && $sql .= ' unsigned ';
                 break;
-            case dao::FIELD_TYPE_CHAR:
+            case Table::FIELD_TYPE_CHAR:
                 $sql .= 'char';
                 if (isset($_i[Table::FIELD_INFO_LENGTH])) {
                     $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
                 }
                 break;
-            case dao::FIELD_TYPE_VARCHAR:
+            case Table::FIELD_TYPE_VARCHAR:
                 $sql .= 'varchar';
                 if (isset($_i[Table::FIELD_INFO_LENGTH])) {
                     $sql .= '(' . $_i[Table::FIELD_INFO_LENGTH] . ') ';
+                } else {
+                    $sql .= '(64) ';
                 }
                 break;
             case Table::FIELD_TYPE_TEXT:

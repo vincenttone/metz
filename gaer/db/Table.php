@@ -91,7 +91,7 @@ abstract class Table
 
     public function create()
     {
-        return $this->_get_connection()
+        return $this->get_db_connection()
             ->create_table(
                 $this->get_table_name(),
                 $this->get_fields_info(),
@@ -101,7 +101,7 @@ abstract class Table
 
     public function create_index()
     {
-        return $this->_get_connection()
+        return $this->get_db_connection()
             ->create_indexes(
                 $this->get_table_name(),
                 $this->get_indexes()
