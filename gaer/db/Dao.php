@@ -33,7 +33,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     public function __construct($id = null, $data = null)
     {
         $this->_table = $this->get_table();
-        $id && $this->_set_id($id);
+        if ($id) {
+            $this->_set_id($id);
+        }
         is_array($data) && $this->_fill($data);
     }
 
@@ -156,6 +158,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         $fields = $this->_get_fields_info();
         foreach ($fields as $_f => $_conf) {
             if ($_f == $this->get_primary_key()) {
+                if ($this->_id === null && isset($data[$_f])) {
+                    $this->_set_id($data[$_f]);
+                }
                 continue;
             }
             if (array_key_exists($_f, $data)) {
