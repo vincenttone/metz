@@ -64,8 +64,14 @@ class Log {
         'log_level'		=> self::LEVEL_NOTICE,
     );
 
+    protected $_current_file;
+    protected $_current_class;
+    protected $_deepth = -1;
+
     protected function __construct()
     {
+        $this->_current_file = __FILE__;
+        $this->_current_class = get_called_class();
     }
     /**
      * 获取实例的方法
@@ -139,10 +145,28 @@ class Log {
         $trace = debug_backtrace();
         $file = '';
         $line = '';
-        if (is_array($trace) && count($trace) > 0) {
-            $t = array_pop($trace);
-            isset($t['file']) && $file = $t['file'];
-            isset($t['line']) && $line = $t['line'];
+        $class = '';
+        $func = '';
+        if ($this->_deepth < 0) {
+            foreach ($trace as $_t) {
+                if ((isset($_t['class']) && $_t['class'] == $this->_current_class)
+                    || (isset($_t['file']) && $_t['file'] == $this->_current_file)
+                    || (isset($_t['function']) && $_t['function'] == '{closure}')
+                ) {
+                    $this->_deepth++;
+                    continue;
+                }
+                isset($_t['file']) && $file = $_t['file'];
+                isset($_t['line']) && $line = $_t['line'];
+                isset($_t['class']) && $class = $_t['class'];
+                isset($_t['function']) && $func = $_t['function'];
+                break;
+            }
+        } elseif (isset($trace[$this->_deepth])) {
+            isset($trace[$this->_deepth]['file']) && $file = $trace[$this->_deepth]['file'];
+            isset($trace[$this->_deepth]['line']) && $line = $trace[$this->_deepth]['line'];
+            isset($trace[$this->_deepth]['class']) && $class = $trace[$this->_deepth]['class'];
+            isset($trace[$this->_deepth]['function']) && $func = $trace[$this->_deepth]['function'];
         }
         $prefix .= sprintf(
             "\tFile: [%s]\tLine: [%s]\tPid: [%d]\t",
