@@ -16,14 +16,24 @@ class Router
 
     protected $_configure = [];
     protected $_router = [];
-    protected $_url_path_list = [];
-    protected $_current_url = '';
-    protected $_current_url_path = '';
-    protected $_current_url_info = [];
+
+    // uri
+    protected $_user;
+    protected $_pass;
+    protected $_host;
+    protected $_path;
+    protected $_scheme;
+    protected $_query;
+    protected $_fragment;
+    // headers
+    protected $_referer;
+    
     protected $_pre_route_hooks = [];
 
     protected function __construct()
     {
+        $this->_analyze_current_url();
+        $this->_analyze_headers();
     }
     /**
      * Forbid to clone the object
@@ -91,11 +101,10 @@ class Router
         foreach ($routes as $_r) {
             if ($_r->match($url_info['uri'])) {
                 $fmt = RenderEngine::current_format();
-                $fmt_supporting = $fmt && RenderEngine::is_supporting_format($fmt);
-                $fmt_supporting && RenderEngine::format($fmt);
+                RenderEngine::format($fmt);
                 $ret = $_r->exec();
-                if ($fmt_supporting && $ret) {
-                    RenderEngine::output($fmt, $ret);
+                if ($ret) {
+                    RenderEngine::output($ret);
                 }
                 return $ret;
             }
@@ -111,113 +120,79 @@ class Router
         $this->_pre_route_hooks[] = $hook;
         return $this;
     }
+
+    protected function _analyze_headers()
+    {
+        $this->_referer = $_SERVER['HTTP_REFERER'] ?? '';
+        return $this;
+    }
     /**
      * @return string
      */
-    protected function _carry_current_url_path()
+    protected function _analyze_current_url()
     {
-        $this->_current_url = trim($_SERVER['REQUEST_URI'], '/');
-        $this->_current_url_path = $this->get_url_path_from_url($this->_current_url);
-        return $this->_current_url_path;
+        $this->_url = trim($_SERVER['REQUEST_URI'], '/');
+        $uri = parse_url($this->_url);
+        $this->_user = $uri['user'] ?? '';
+        $this->_pass = $uri['pass'] ?? '';
+        $this->_host = $uri['host'] ?? '';
+        $this->_path = isset($uri['path']) ? trim($uri['path'], '/') : '';
+        $this->_scheme = $uri['scheme'] ?? 'http';
+        $this->_query = $uri['query'] ?? '';
+        $this->_fragment = $uri['fragment'] ?? '';
+        return $this;
     }
 
-    /**
-     * @param string $url
-     * @return string
-     */
-    public function get_url_path_from_url($url)
-    {
-        $qustion_mark_pos = strpos($url, '?');
-        if ($qustion_mark_pos !== false) {
-            $url = substr($url, 0, $qustion_mark_pos);
-        }
-        $url_piece = explode('/', $url);
-        $url_base = strpos($url_piece[0], '.php');
-        if ($url_base) {
-            array_shift($url_piece);
-        }
-        $path = implode('/', $url_piece);
-        $path = '/'.trim($path, '/');
-        return $path;
-    }
-
-    /**
-     * @return string
-     */
-    public function get_current_url_path()
-    {
-        return $this->_current_url_path;
-    }
-
-    /**
-     * @return string
-     */
-    static function current_url_path()
-    {
-        $path = self::get_instance()->get_current_url_path();
-        return $path;
-    }
     /**
      * @return string
      */
     static function current_url()
     {
-        return self::get_instance()->_current_url;
-    }
-
-    /**
-     * @return array
-     */
-    static function current_url_info()
-    {
-        return self::get_instance()->_current_url_info;
-    }
-
-    /**
-     * @return string
-     */
-    static function current_url_extra_info()
-    {
-        $url_info = self::current_url_info();
-        $perm = isset($url_info['rule'][3])
-            ? $url_info['rule'][3]
-            : null;
-        return $perm;
+        return self::get_instance()->_url;
     }
     /**
      * @param string $path
      * @return bool
      */
-    static function is_current_url_path($path = '/')
+    public function is_current_url_path($path = '/')
     {
         if (is_null($path)) {
             return false;
         }
-        $url = self::current_url_path();
-        if (is_array($path)) {
-            foreach ($path as $_p) {
-                $_p = rtrim($_p, '/');
-                if (strcmp($_p, $url) === 0) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        strcmp($path, '/') === 0
-                           || $path = rtrim($path, '/');
-        return strcmp($path, $url) === 0;
+        return strcmp(trim($path, '/'), $this->_path) === 0;
     }
 
+    public function get_referer()
+    {
+        return $this->_referer;
+    }
+
+    public static function referer()
+    {
+        return self::get_instance()->get_referer();
+    }
     /**
      * @param string $path
      * @throws Exception
      */
-    static function redirect_to($path)
+    static function redirect_to($path, $data = [])
     {
-        if (self::is_current_url_path($path)) {
+        if (self::get_instance()->is_current_url_path($path)) {
             throw new exceptions\http\BadRequest('No End Loop Redirect!');
         }
-        header('Location: /');
+        header('Location: ' . $path . '?' . http_build_query($data));
         exit;
+    }
+
+    static function redirect_to_pre_url($data)
+    {
+        $referer = self::referer();
+        if (isset($referer[0])) {
+            $u = parse_url($referer);
+            $path = $u['path'] ?? '/';
+            self::redirect_to($path, $data);
+        } else {
+            self::redirect_to('/', $data);
+        }
     }
 }

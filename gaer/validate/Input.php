@@ -83,7 +83,7 @@ class Input
         return $this;
     }
 
-    public function valiadte()
+    public function validate()
     {
         if (empty($this->_val)) {
             if ($this->_required) {

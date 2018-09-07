@@ -33,6 +33,7 @@ class RenderEngine
     protected $_template_suffix = 'phtml';
     protected $_buffer = '';
     protected $_render_fmt = null;
+    protected $_fmt_seted = false;
 
     protected function __clone()
     {
@@ -53,8 +54,9 @@ class RenderEngine
         return isset(self::$_content_type_map[$fmt]);
     }
 
-    public static function output($format, $data)
+    public static function output($data)
     {
+        $format = self::current_format();
         switch($format) {
         case self::TYPE_JSON:
             self::json($data);
@@ -170,15 +172,22 @@ class RenderEngine
      */
     function set_render_format($type = self::TYPE_HTML)
     {
-        if (isset(self::$_content_type_map[$type])) {
+        if (isset(self::$_content_type_map[$type])
+            && $this->_fmt_seted === false
+        ) {
             $this->_render_fmt = $type;
             header('Content-Type: ' . self::$_content_type_map[$type]);
+            $this->_fmt_seted = true;
+            return true;
         }
+        Monitor::warn('render format ' . $this->_render_fmt . ' setted before, now want: ' . $type);
+        return false;
     }
 
     function get_render_format()
     {
-        return $this->_render_fmt ?? self::TYPE_HTML;
+        $fmt = $this->_render_fmt ?? self::TYPE_HTML;
+        return $this->is_supporting_format($fmt) ? $fmt : self::TYPE_HTML;
     }
     /**
      * @param array $template
@@ -232,10 +241,10 @@ class RenderEngine
         return $this;
     }
 
-    function _format_to_xml($arr,$dom = null, $node = null, $root = 'xml', $cdata = false)
+    static function _format_to_xml($arr,$dom = null, $node = null, $root = 'xml', $cdata = false)
     {
         if (!$dom){
-            $dom = new DOMDocument('1.0','utf-8');
+            $dom = new \DOMDocument('1.0','utf-8');
         }
         if(!$node){
             $node = $dom->createElement($root);
