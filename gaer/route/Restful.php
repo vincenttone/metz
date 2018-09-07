@@ -16,7 +16,7 @@ class Restful extends Route
     const METHOD_NEW = 'new';
     const METHOD_MODIFY = 'modify';
     const METHOD_REMOVE = 'remove';
-    const METHOD_LIST = 'list';
+    const METHOD_LIST = 'all';
     const METHOD_SHOW = 'show';
 
     const ACTION_PATCH = 'patch';

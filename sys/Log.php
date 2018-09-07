@@ -64,14 +64,10 @@ class Log {
         'log_level'		=> self::LEVEL_NOTICE,
     );
 
-    protected $_current_file;
-    protected $_current_class;
     protected $_deepth = -1;
 
     protected function __construct()
     {
-        $this->_current_file = __FILE__;
-        $this->_current_class = get_called_class();
     }
     /**
      * 获取实例的方法
@@ -114,7 +110,7 @@ class Log {
      * @param null $des
      * @return bool
      */
-    public function log($level_word, $format, $values = array(), $des = null)
+    public function log($level_word, $format, $values = array(), $prefix = null, $des = null)
     {
         $level = self::LEVEL_ERROR;
         $level_array = array_flip($this->_levels);
@@ -133,7 +129,7 @@ class Log {
         } elseif (is_object($format) && ($format instanceof Closure)) {
             $msg = call_user_func_array($format, $values);
         }
-        return $this->_write($msg, $level, $des);
+        return $this->_write($msg, $level, $prefix, $des);
     }
 
     /**
@@ -149,8 +145,8 @@ class Log {
         $func = '';
         if ($this->_deepth < 0) {
             foreach ($trace as $_t) {
-                if ((isset($_t['class']) && $_t['class'] == $this->_current_class)
-                    || (isset($_t['file']) && $_t['file'] == $this->_current_file)
+                if ((isset($_t['class']) && $_t['class'] == get_called_class())
+                    || (isset($_t['file']) && $_t['file'] == __FILE__)
                     || (isset($_t['function']) && $_t['function'] == '{closure}')
                 ) {
                     $this->_deepth++;
@@ -262,7 +258,7 @@ class Log {
      * @param int $level
      * @return bool
      */
-    protected function _write($message, $level = self::LEVEL_ERROR, $des = null) {
+    protected function _write($message, $level = self::LEVEL_ERROR, $prefix = null, $des = null) {
         $level_word = null;
         if (isset($this->_level_words[$level])) {
             $level_word = $this->_level_words[$level];
@@ -286,7 +282,12 @@ class Log {
         $filepath = (!isset($this->_config['file_prefix']) || empty($this->_config['file_prefix']))
             ? $des : $des. $this->_config['file_prefix'] . '.';
         $filepath .= $file_infix . '.' . date('YmdH') . '.log';
-        $content  = sprintf("%s\t%s\t%s\n", $level_word, $this->_log_prefix(), trim($message));
+        $content  = sprintf(
+            "%s\t%s\t%s\n",
+            $level_word,
+            $prefix ? $prefix : $this->_log_prefix(),
+            trim($message)
+        );
         return @error_log($content, 3, $filepath);
     }
 

@@ -61,11 +61,11 @@ class RenderEngine
         case self::TYPE_JSON:
             self::json($data);
             break;
-        case self::TYPE_HTML:
         case self::TYPE_XML:
             if (is_array($data)) {
                 $data = self::_format_to_xml($data);
             }
+        case self::TYPE_HTML:
         case self::TYPE_TXT:
         case self::TYPE_JPEG:
         case self::TYPE_JPG:

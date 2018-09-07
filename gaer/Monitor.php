@@ -11,6 +11,8 @@ class Monitor
     protected static $_instance = null;
     protected $_m = null;
 
+    protected $_deepth = -1;
+
     protected function __construct()
     {
     }
@@ -71,10 +73,46 @@ class Monitor
         return $this;
     }
 
+    protected function _get_prefix()
+    {
+        $file = '';
+        $line = '';
+        $trace = debug_backtrace();
+        if ($this->_deepth < 0) {
+            foreach ($trace as $_t) {
+                if ((isset($_t['class']) && $_t['class'] == get_called_class())
+                    || (isset($_t['file']) && $_t['file'] == __FILE__)
+                    || (isset($_t['function']) && $_t['function'] == '{closure}')
+                ) {
+                    $this->_deepth++;
+                    continue;
+                }
+                isset($_t['file']) && $file = $_t['file'];
+                isset($_t['line']) && $line = $_t['line'];
+                isset($_t['class']) && $class = $_t['class'];
+                isset($_t['function']) && $func = $_t['function'];
+                break;
+            }
+        } elseif (isset($trace[$this->_deepth])) {
+            isset($trace[$this->_deepth]['file']) && $file = $trace[$this->_deepth]['file'];
+            isset($trace[$this->_deepth]['line']) && $line = $trace[$this->_deepth]['line'];
+            isset($trace[$this->_deepth]['class']) && $class = $trace[$this->_deepth]['class'];
+            isset($trace[$this->_deepth]['function']) && $func = $trace[$this->_deepth]['function'];
+        }
+        return sprintf("[%s:%s]", $file, $line);
+    }
+
     protected function _record($info, $level = self::LEVEL_INFO)
     {
         if ($this->_m !== null && is_callable($this->_m)) {
-            return call_user_func_array($this->_m, [$level, $info]);
+            $prefix = $this->_get_prefix();
+            return call_user_func_array(
+                $this->_m,
+                [
+                    $level,
+                    sprintf("%s\t%s", $prefix, $info)
+                ]
+            );
         }
         return null;
     }

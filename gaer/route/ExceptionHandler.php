@@ -15,6 +15,7 @@ class ExceptionHandler
             header('HTTP/1.1 ' . $ex->getCode() . ' ' . $ex->getResponseMsg());
             Monitor::error($ex);
         } elseif ($ex instanceof BaseEx) {
+            Monitor::error('handle exception: ' . json_encode($ex));
             $current_fmt = RenderEngine::current_format();
             $data = ['code' => $ex->getCode(), 'message' => $ex->getResponseMsg()];
             switch ($current_fmt) {
@@ -25,7 +26,6 @@ class ExceptionHandler
             default:
                 Router::redirect_to_pre_url($data);
             }
-            Monitor::error('handle exception: ' . json_encode($ex));
         } elseif ($ex instanceof \Exception) {
             header('HTTP/1.1 500 somethign wrong happend.');
             Monitor::error('handle exception, errno: ' . $ex->getCode() . ' msg: ' . $ex->getMessage());

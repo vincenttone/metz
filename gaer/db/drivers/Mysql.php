@@ -146,6 +146,7 @@ class Mysql implements Driver
         } else {
             $exec_info = $this->_acts->get_exec_info();
             $ret = $this->_prepare_and_run($exec_info['prepare_str'], $exec_info['data']);
+            $this->_reset_acts();
             if ($ret) {
                 switch ($exec_info['type']) {
                 case MysqlAction::TYPE_INSERT:
