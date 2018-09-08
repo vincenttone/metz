@@ -142,7 +142,8 @@ class RenderEngine
             }
             $this->_render_template($base_template, $base_var);
         }
-        return $this->_buffer;
+        echo $this->_buffer;
+        return $this;
     }
     /**
      * @param array $data
@@ -221,16 +222,16 @@ class RenderEngine
     /**
      * @param array $template
      * @param array $var
-     * @return string
      */
     protected function _render_template($template, array $var = [])
     {
         $template_file = $this->get_template_file($template);
         if (empty($template_file)) {
-            return '';
+            return $this;
         }
         $var = array_merge($var, $this->_vars);
         extract($var);
+        ob_start();
         //ob_end_flush();
         ob_end_clean();
         ob_start();

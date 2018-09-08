@@ -135,7 +135,7 @@ class Router
         $uri = parse_url($this->_url);
         $this->_user = $uri['user'] ?? '';
         $this->_pass = $uri['pass'] ?? '';
-        $this->_host = $uri['host'] ?? '';
+        $this->_host = $uri['host'] ?? $_SERVER['HTTP_HOST'] ?? '';
         $this->_path = isset($uri['path']) ? trim($uri['path'], '/') : '';
         $this->_scheme = $uri['scheme'] ?? 'http';
         $this->_query = $uri['query'] ?? '';
@@ -143,12 +143,16 @@ class Router
         return $this;
     }
 
+    public function get_host()
+    {
+        return empty($this->_host) ? '/' : $this->_scheme . '://' . $this->_host;
+    }
     /**
      * @return string
      */
-    static function current_url()
+    static function host()
     {
-        return self::get_instance()->_url;
+        return self::get_instance()->get_host();
     }
     /**
      * @param string $path
