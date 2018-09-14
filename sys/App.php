@@ -104,7 +104,7 @@ class App
         return (
             isset($this->_configure['base'])
             && isset($this->_configure['base']['run_mode']))
-            ? $this->_configure['base']['run_mode']
+            ? intval($this->_configure['base']['run_mode'])
             : Constant::RUN_MODE_PRO;
     }
 

@@ -360,7 +360,7 @@ class MysqlAction
             $str = ' ORDER BY ';
             $arr = [];
             foreach ($this->_info[self::INFO_KEY_SORT] as $_f => $_d) {
-                $arr[] = $_f . ' ' . $_v;
+                $arr[] = $_f . ' ' . $_d;
             }
             if (empty($arr)) {
                 $str = '';

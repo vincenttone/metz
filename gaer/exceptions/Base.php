@@ -35,7 +35,7 @@ class Base extends \Exception implements \JsonSerializable
 
     public function jsonSerialize()
     {
-        return $this->getArrayCopy();
+        return json_encode($this->getArrayCopy());
     }
 
     public function __toString()

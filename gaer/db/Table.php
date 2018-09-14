@@ -37,7 +37,7 @@ abstract class Table
     protected $_conn = null;
     protected $_cache = null;
 
-    protected static $_instance = null;
+    protected static $_instance = [];
 
     protected function __construct()
     {
@@ -49,11 +49,13 @@ abstract class Table
 
     public static function get_instance()
     {
-        if (self::$_instance === null) {
-            $kls = get_called_class();
-            self::$_instance = new $kls();
+        $kls = get_called_class();
+        if (!isset(self::$_instance[$kls])
+            || self::$_instance[$kls] === null
+        ) {
+            self::$_instance[$kls] = new $kls();
         }
-        return self::$_instance;
+        return self::$_instance[$kls];
     }
 
     public static function indexes()
@@ -63,7 +65,8 @@ abstract class Table
 
     public static function table_name()
     {
-        return self::get_instance()->get_table_name();
+        $tbl = self::get_instance()->get_table_name();
+        return $tbl;
     }
 
     public static function fields()

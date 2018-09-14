@@ -147,12 +147,21 @@ class Router
     {
         return empty($this->_host) ? '/' : $this->_scheme . '://' . $this->_host;
     }
+    public function get_url()
+    {
+        return $this->get_host() . '?' . $this->_query;
+    }
     /**
      * @return string
      */
     static function host()
     {
         return self::get_instance()->get_host();
+    }
+
+    static function current_url()
+    {
+        return self::get_instance()->get_url();
     }
     /**
      * @param string $path
@@ -181,10 +190,12 @@ class Router
      */
     static function redirect_to($path, $data = [])
     {
+        /*
         if (self::get_instance()->is_current_url_path($path)) {
             throw new exceptions\http\BadRequest('No End Loop Redirect!');
         }
-        header('Location: ' . $path . '?' . http_build_query($data));
+        */
+        header('Location: ' . $path . '?' . http_build_query($data)) . ' &from=' . self::current_url();
         exit;
     }
 
