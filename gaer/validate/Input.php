@@ -43,6 +43,8 @@ class Input
     protected $_default = null;
     protected $_required = true;
 
+    protected $_key = null;
+
     public function __construct($val, $type = self::TYPE_STR, $required = true, $default = null)
     {
         $this->_val = $val;
@@ -88,7 +90,7 @@ class Input
         if (empty($this->_val)) {
             if ($this->_required) {
                 throw new exceptions\request\params\MissingParams(
-                    'required params, but got: '
+                     'required params ' . ($this->_get_key() ?? '') . ', but got: '
                     . json_encode($this->_val)
                 );
             } elseif ($this->_default) {
@@ -108,7 +110,7 @@ class Input
         }
         if ($match == false) {
             throw new exceptions\request\params\unexpecteParams(
-                'unexpect params format: '
+                'unexpect params ' . ($this->_get_key() ?? '') . 'format: '
                 . json_encode($this->_val)
             );
         }
@@ -123,6 +125,17 @@ class Input
             $this->_val = $this->_filter_var(FILTER_SANITIZE_STRING);
         }
         return $this;
+    }
+
+    public function set_key($key)
+    {
+        $this->_key = $key;
+        return $this;
+    }
+
+    protected function _get_key()
+    {
+        return $this->_key;
     }
 
     protected function _filter_var($filter, $options = 0)

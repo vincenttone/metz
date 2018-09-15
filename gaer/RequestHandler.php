@@ -79,13 +79,15 @@ class RequestHandler
         $r = new VaReq($key, $type, $required, $default);
         return $r->validate()->sanitize()->get_val();
     }
-
+    /**
+     * [k => [required, default]]
+     */
     protected function _fetch_vars($keys, array $src)
     {
         $result = [];
         $input = new Input(null);
         foreach ($src as $_k => $_v) {
-            if (is_array($key)) {
+            if (is_array($keys)) {
                 if (isset($keys[$_k])) {
                     if (is_array($keys[$_v])) {
                         isset($keys[$_v][0]) && $input->set_type($_v[0]);
@@ -101,9 +103,13 @@ class RequestHandler
                     continue;
                 }
             } else {
-                $input->set_type(Input::TYPE_STR)->set_required(true);
+                $input->set_type(Input::TYPE_STR)->set_required(false);
             }
-            $result[$_k] = $input->set_val($_v)->validate()->sanitize()->get_val();
+            $result[$_k] = $input->set_key($_k)
+                         ->set_val($_v)
+                         ->validate()
+                         ->sanitize()
+                         ->get_val();
         }
         return $result;
     }

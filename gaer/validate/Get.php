@@ -3,8 +3,6 @@ namespace Gaer\validate;
 
 class Get extends Input
 {
-    protected $_key;
-
     public function __construct($key, $type = self::TYPE_STR, $required = true, $default = null)
     {
         $this->_key = $key;

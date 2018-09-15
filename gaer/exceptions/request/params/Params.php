@@ -1,5 +1,5 @@
 <?php
-namespace Gaer\exceptions\request;
+namespace Gaer\exceptions\request\params;
 
 use Gaer\exceptions\request\Request;
 
