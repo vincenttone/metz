@@ -171,9 +171,9 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
                 throw new exceptions\db\UnexpectedValue(
                     [
                         'err' => 'Unpected result when load data',
-                        'conn' => json_encode($this->_conn),
-                        'fields' => $fields,
-                        'result' => json_encode($data),
+                        'table' => $this->_get_table_class(),
+                        'field' => $_f,
+                        'data' => $data,
                     ]
                 );
             }
@@ -211,7 +211,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
 
     protected function _get_fields_info()
     {
-        $table = $this->_get_table();
+        $table = $this->get_table();
         return $table::get_instance()->get_fields_info();
     }
 
@@ -353,8 +353,8 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
     {
         if ($offset == $this->get_primary_key()) {
             return $this->get_id();
-        } elseif (isset($this->_data[$offset])) {
-            return $this->_data[$offset];
+        } elseif (isset($this->_data[$offset][self::DATA_VAL])) {
+            return $this->_data[$offset][self::DATA_VAL];
         }
         return null;
     }
@@ -364,10 +364,7 @@ abstract class Dao implements \JsonSerializable, \ArrayAccess
         if ($offset == $this->get_primary_key()) {
             $this->_set_id($val);
         } else {
-            $fields_info = $this->_get_fields_info();
-            if (isset($fields_info[$offset])) {
-                $this->_data[$offset] = $val;
-            }
+            $this->__set($offseet, $val);
         }
     }
 

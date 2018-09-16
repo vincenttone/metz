@@ -53,7 +53,7 @@ class Mysql implements Driver
 
     public function select($fields = null)
     {
-        $this->_add_act(MysqlAction::TYPE_QUERY);
+        $this->_add_act(MysqlAction::TYPE_SELECT);
         $this->_get_current_act()->set_fields($fields);
         return $this;
     }
@@ -79,14 +79,15 @@ class Mysql implements Driver
 
     public function count($fields = null)
     {
+        $this->_add_act(MysqlAction::TYPE_SELECT);
         $this->_get_current_act()->count($fields);
-        return $this;
+        return $this->exec();
     }
 
     public function exists($fields = null)
     {
         $this->_get_current_act()->exists($fields);
-        return $this;
+        return $this->exec();
     }
 
     public function where($cond)
@@ -152,7 +153,11 @@ class Mysql implements Driver
                 case MysqlAction::TYPE_INSERT:
                     return $this->_conn->LastInsertId();
                 case MysqlAction::TYPE_SELECT:
-                    return $ret->fetchAll();
+                    $result = $ret->fetchAll();
+                    if ($exec_info['extra_type'] == MysqlAction::EXTRA_TYPE_COUNT) {
+                        return reset($result[0]);
+                    }
+                    return $result;
                 case MysqlAction::TYPE_UPSERT:
                 case MysqlAction::TYPE_UPDATE:
                 case MysqlAction::TYPE_DELETE:

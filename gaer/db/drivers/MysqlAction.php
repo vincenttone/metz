@@ -37,7 +37,11 @@ class MysqlAction
     const TYPE_PUSH = 101;
     const TYPE_POP  = 102;
 
+    const EXTRA_TYPE_NONE = 0;
+    const EXTRA_TYPE_COUNT = 1;
+
     protected $_type = null;
+    protected $_extra_type = self::EXTRA_TYPE_NONE;
     protected $_info = [];
 
     protected $_status = self::STATUS_NORMAL;
@@ -166,6 +170,7 @@ class MysqlAction
         }
         return [
             'type' => $this->_type,
+            'extra_type' => $this->_extra_type,
             'prepare_str' => $str,
             'data' => $this->_get_counted_data(),
         ];
@@ -256,12 +261,14 @@ class MysqlAction
         ) {
             if (isset($this->_info[self::INFO_KEY_COUNT])) {
                 $fields = 'count(' . reset($this->_info[self::INFO_KEY_FIELDS]) . ')';
+                $this->_extra_type = self::EXTRA_TYPE_COUNT;
             } else {
                 $fields = implode(', ', $this->_info[self::INFO_KEY_FIELDS]);
             }
         } else {
             if (isset($this->_info[self::INFO_KEY_COUNT])) {
                 $fields = ' count(' . $default . ') ';
+                $this->_extra_type = self::EXTRA_TYPE_COUNT;
             } else {
                 $fields = $default;
             }

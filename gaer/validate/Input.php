@@ -95,7 +95,7 @@ class Input
                 );
             } elseif ($this->_default) {
                 $this->_val = $this->_default;
-                return;
+                return $this;
             }
         }
         $match = true;

@@ -34,7 +34,7 @@ abstract class Model extends \ArrayObject
         $daos = [];
         foreach ($data as $_d) {
             $kls = $this->_get_binding_dao_class();
-            $daos[] = new $kls(null, $data);
+            $daos[] = new $kls(null, $_d);
         }
         return $daos;
     }
