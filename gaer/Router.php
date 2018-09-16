@@ -147,9 +147,18 @@ class Router
     {
         return empty($this->_host) ? '/' : $this->_scheme . '://' . $this->_host;
     }
-    public function get_url()
+
+    public function get_query_array()
     {
-        return $this->get_host() . '?' . $this->_query;
+        return self::convert_query_to_array($this->_query);
+    }
+
+    public function get_url($suffix = '')
+    {
+        $qa = $this->get_query_array();
+        $sa = is_array($suffix) ? $suffix : self::convert_query_to_array($suffix);
+        $qa = array_merge($qa, $sa);
+        return empty($qa) ? $this->get_host() : $this->get_host() . '?' . self::convert_array_to_query($qa);
     }
     /**
      * @return string
@@ -159,9 +168,9 @@ class Router
         return self::get_instance()->get_host();
     }
 
-    static function current_url()
+    static function current_url($suffix = '')
     {
-        return self::get_instance()->get_url();
+        return self::get_instance()->get_url($suffix);
     }
     /**
      * @param string $path
@@ -209,5 +218,28 @@ class Router
         } else {
             self::redirect_to('/', $data);
         }
+    }
+
+    public static function convert_query_to_array($query)
+    {
+        if (empty($query)) {
+            return [];
+        }
+        $arr = [];
+        $q = explode('&', $query);
+        foreach ($q as $_q) {
+            $_p = explode('=', $_q);
+            isset($_p[1]) && $arr[$_p[0]] = $_p[1];
+        }
+        return $arr;
+    }
+
+    public static function convert_array_to_query($arr)
+    {
+        $qa = [];
+        foreach ($arr as $_k => $_v) {
+            $qa[] = urlencode($_k) . '=' . urlencode($_v);
+        }
+        return implode('&', $qa);
     }
 }

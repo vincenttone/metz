@@ -136,12 +136,15 @@ class MysqlAction
                  . ' FROM ' . $this->_get_table();
             $where = $this->_get_where_str();
             empty($where) || $str .= $where;
+
             $sort = $this->_get_sort_str();
             empty($sort) || $str .= $sort;
+            
+            $limit = $this->_get_limit_str();
+            empty($limit) || $str .= $limit;
+
             $offset = $this->_get_offset_str();
             empty($offset) || $str .= $offset;
-            $limit = $this->_get_limit_str();
-            empty($$limit) || $str .= $$limit;
             break;
         case self::TYPE_INSERT:
             $str = 'INSERT INTO ' . $this->_get_table();
