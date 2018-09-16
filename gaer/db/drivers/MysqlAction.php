@@ -326,25 +326,25 @@ class MysqlAction
         $data = [];
         foreach ($this->_info[self::INFO_KEY_WHERE] as $_k => $_v) {
             if (is_array($_v)) {
-                if (isset($_v[0]) && isset($_v[1])) {
-                    switch(trim($_v[0])) {
+                foreach ($_v as $__k => $__v) {
+                    switch(trim($__k)) {
                     case '=':
                     case '>':
                     case '<':
                     case '>=':
                     case '<=':
                     case 'like':
-                        $str_arr[] = $_k . ' ' . $_v[0] . ' ?';
-                        $data[] = $_v[1];
+                        $str_arr[] = $_k . ' ' . $__k . ' ?';
+                        $data[] = $__v;
                         break;
                     case 'in':
-                        if (!is_array($_v[1])) {
+                        if (!is_array($__v)) {
                             throw new exceptions\db\UnexpectedInput(
                                 'unexpect where in data: ' . json_encode($this->_info[self::INFO_KEY_WHERE])
                             );
                         }
-                        $str_arr[] = '(' . implode(', ', array_fill(0, count($_v[1]), '?')) . ')';
-                        $data = array_merge($data, $_v[1]);
+                        $str_arr[] = '(' . implode(', ', array_fill(0, count($__v), '?')) . ')';
+                        $data = array_merge($data, $__v);
                         break;
                     }
                 }
