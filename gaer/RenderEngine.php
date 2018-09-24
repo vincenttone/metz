@@ -201,7 +201,7 @@ class RenderEngine
                 __METHOD__.'please set correct template dir and check is a dir: '
                 .var_export($template, true));
         }
-        $template_file = $this->_template_dir . '/' . $template . '.' . $this->_template_suffix;
+        $template_file = $this->_template_dir . DIRECTORY_SEPARATOR . $template . '.' . $this->_template_suffix;
         if (is_file($template_file)) {
             return $template_file;
         } else {

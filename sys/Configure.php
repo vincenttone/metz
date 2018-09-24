@@ -115,7 +115,7 @@ class Configure
     {
         $config = false;
         $path == null && $path = $this->get_config_path();
-        $file_path = $path.'/'.$file;
+        $file_path = $path . DIRECTORY_SEPARATOR . $file;
         return $this->get_config_from_filepath($file_path);
     }
 
@@ -156,15 +156,15 @@ class Configure
         empty($path_array) || $filepath = implode($path_array);
         empty($path) && $path = $this->get_config_path();
         if (!empty($filepath)) {
-            $path .= '/'.$filepath;
+            $path .= DIRECTORY_SEPARATOR . $filepath;
         }
         if (empty($file)) {
             $file = $section;
             $section = null;
         }
-        if (is_file($path.'/'.$file.'.ini')) {
-        } elseif (!empty($file) && is_dir($path.'/'.$file)) {
-            $path = $path.'/'.$file;
+        if (is_file($path . DIRECTORY_SEPARATOR . $file . '.ini')) {
+        } elseif (!empty($file) && is_dir($path . DIRECTORY_SEPARATOR . $file)) {
+            $path = $path . DIRECTORY_SEPARATOR . $file;
             $file = $section;
             $section = null;
         } else {
@@ -174,7 +174,7 @@ class Configure
         $run_mode == Constant::RUN_MODE_PRO && $this->check_run_mode_suffix(false);
         $run_mode_abbr = self::run_mode_abbr($run_mode);
         $run_mode_conf_file = empty($run_mode_abbr) ? $file : $file.'.'.$run_mode_abbr;
-        if ($this->_check_run_mode_suffix && is_file($path.'/'.$run_mode_conf_file.'.ini')) {
+        if ($this->_check_run_mode_suffix && is_file($path . DIRECTORY_SEPARATOR . $run_mode_conf_file . '.ini')) {
             $file = $run_mode_conf_file;
             Log::debug("use run mode config file: [%s]", $file);
         }

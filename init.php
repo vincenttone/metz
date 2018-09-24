@@ -8,9 +8,9 @@ if (!defined('METZ_INIT')) {
     define('METZ_PATH_INIT_FILE', __FILE__);
     define('METZ_PATH_HOME', dirname(METZ_PATH_INIT_FILE));
     // composer autoloader
-    require_once(METZ_PATH_HOME . '/vendor/autoload.php');
+    require_once(METZ_PATH_HOME . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php');
     // start app
-    Metz\sys\App::application()->bootstrap(METZ_PATH_HOME.'/conf/app.ini');
+    Metz\sys\App::application()->bootstrap(METZ_PATH_HOME. DIRECTORY_SEPARATOR . 'conf' . DIRECTORY_SEPARATOR . 'app.ini');
     Metz\sys\Log::debug(
         'Metz (%s) runing at [%s] mode, path [%s]',
         [

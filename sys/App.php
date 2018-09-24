@@ -151,17 +151,17 @@ class App
             return $path;
         };
         $path = $get_value('path', $pathname);
-        if (substr($path, 0,1) !== '/') {
-            $path = $this->get_path_by_name('home') . '/' . $path;
+        if (substr($path, 0,1) !== DIRECTORY_SEPARATOR) {
+            $path = $this->get_path_by_name('home') . DIRECTORY_SEPARATOR . $path;
         }
-        if (substr($path, -1,1) === '/') {
+        if (substr($path, -1,1) === DIRECTORY_SEPARATOR) {
             $path = substr($path, 0, strlen($path) - 1);
         }
         if (!is_dir($path)) {
             @mkdir($path, 0755, true);
         }
         if (!empty($sub_path)) {
-            $path .= '/'.$sub_path;
+            $path .= DIRECTORY_SEPARATOR . $sub_path;
         }
         return $path;
     }
