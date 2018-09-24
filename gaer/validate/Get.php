@@ -7,6 +7,6 @@ class Get extends Input
     {
         $this->_key = $key;
         $val = isset($_GET[$key]) ? $_GET[$key] : null;
-        parent::__construct($val, $type, $required, $default);   
+        parent::__construct($val, $type, $required, $default);
     }
 }

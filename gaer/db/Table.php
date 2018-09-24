@@ -190,7 +190,8 @@ abstract class Table
     {
         $h = $this->connect_and_select();
         $conds && $h->where($conds);
-        return $h->count();
+        $count = $h->count();
+        return $count;
     }
 
     public function get_by($conds, $sort = null, $offset = 0, $limit = 0)

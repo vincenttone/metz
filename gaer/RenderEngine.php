@@ -138,7 +138,9 @@ class RenderEngine
             $base_var = [];
             foreach ($template as $_name => $_t) {
                 $_v = isset($var[$_name]) ? $var[$_name] : [];
-                $base_var[$_name] = $this->_render_template($_t, $_v);
+                $this->_render_template($_t, $_v);
+                $base_var[$_name] = $this->_buffer;
+                $this->_buffer = '';
             }
             $this->_render_template($base_template, $base_var);
         }
@@ -222,6 +224,7 @@ class RenderEngine
     /**
      * @param array $template
      * @param array $var
+     * @return string
      */
     protected function _render_template($template, array $var = [])
     {
@@ -231,8 +234,8 @@ class RenderEngine
         }
         $var = array_merge($var, $this->_vars);
         extract($var);
-        ob_start();
         //ob_end_flush();
+        ob_start();
         ob_end_clean();
         ob_start();
         require $template_file;

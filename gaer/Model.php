@@ -14,7 +14,7 @@ abstract class Model extends \ArrayObject
         ];
     }
 
-    protected static $_table = null;
+    protected $_table = null;
 
     public function count($conds = null)
     {
@@ -84,11 +84,11 @@ abstract class Model extends \ArrayObject
 
     protected function _get_table_instance()
     {
-        if (!self::$_table) {
+        if (!$this->_table) {
             $dao_kls = $this->_get_binding_dao_class();
             $dao = new $dao_kls;
-            self::$_table = $dao->get_table();
+            $this->_table = $dao->get_table();
         }
-        return self::$_table;
+        return $this->_table;
     }
 }
